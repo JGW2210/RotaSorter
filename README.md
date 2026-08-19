@@ -66,11 +66,12 @@ python -m rotasolver.cli --self-check --print
 
 ## What is synthetic
 
-Twenty staff over twenty benches, built from the provisional document register.
-The week of 14 September 2026 is the one with data, and it is deliberately
-tight. Two benches are thin on purpose so the warnings have something to warn
-about. [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) has the details, including the
-three places this departs from the design spec.
+Thirty staff over twenty benches, built from the provisional document register.
+The week of 14 September 2026 is the one with data. Every bench runs every
+weekday, which takes 21 people a day to cover and is what the roster is sized
+for; the weekend stays a skeleton service of Urines and Blood Cultures.
+[docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) has the details, including the three
+places this departs from the design spec.
 
 ## Tests
 

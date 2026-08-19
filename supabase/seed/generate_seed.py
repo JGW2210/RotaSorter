@@ -74,6 +74,14 @@ BENCH_GROUPS = [
 #
 # A bench with no row for a given day is not staffed that day. Weekend cover is
 # a separate, smaller requirement rather than the weekday one repeated.
+#
+# Every bench runs every weekday. That is a deliberate change from the original
+# shape, where a bench ran on the two or three days its work actually arrived
+# (Mycology on a Thursday, reference lab reports on a Wednesday) and the Rota
+# Board showed "Not run" everywhere else. Filling every bench every weekday
+# takes the weekday minimum from 13-16 people to 21, which is what the ten extra
+# staff at the end of STAFF are for. The weekend is untouched: Urines and Blood
+# Cultures, one person each.
 BENCHES = [
     ("Urines", "Urines", 2, 3, "competent",
      [("standard", WEEKDAYS, 2, 3), ("weekend", [SAT, SUN], 1, 2)],
@@ -82,31 +90,31 @@ BENCHES = [
      [("standard", WEEKDAYS, 1, 3)],
      [204, 206, 395, 414]),
     ("Faeces Microscopy", "Enteric", 1, 2, "competent",
-     [("standard", [MON, WED, FRI], 1, 2)],
+     [("standard", WEEKDAYS, 1, 2)],
      [235]),
     ("Wounds Reading", "Reading", 1, 2, "competent",
      [("standard", WEEKDAYS, 1, 2)],
      [396]),
     ("Urogenitals Reading", "Reading", 1, 2, "competent",
-     [("standard", [TUE, THU], 1, 2)],
+     [("standard", WEEKDAYS, 1, 2)],
      [399]),
     ("ENT Reading", "Reading", 1, 2, "competent",
-     [("standard", [TUE, THU], 1, 2)],
+     [("standard", WEEKDAYS, 1, 2)],
      [397]),
     ("CAT-3 Reading", "Reading", 1, 2, "competent",
-     [("standard", [WED, FRI], 1, 2)],
+     [("standard", WEEKDAYS, 1, 2)],
      [398]),
     ("EUCAST Sensitivity Testing", "Sensitivities", 1, 2, "competent",
      [("standard", WEEKDAYS, 1, 2)],
      [274]),
     ("Processing Anaerobes", "Processing", 1, 2, "competent",
-     [("standard", [MON, WED, FRI], 1, 2)],
+     [("standard", WEEKDAYS, 1, 2)],
      [205, 134]),
     ("Deep Wounds/ Tissues", "Processing", 1, 2, "competent",
      [("standard", WEEKDAYS, 1, 2)],
      [401, 402, 403, 404, 407, 105]),
     ("Trichomonas, Grams and Broths", "Processing", 1, 2, "competent",
-     [("standard", [TUE, THU], 1, 2)],
+     [("standard", WEEKDAYS, 1, 2)],
      [241, 400, 111, 406]),
     ("Quick Tests", "Rapid & ID", 1, 2, "competent",
      [("standard", WEEKDAYS, 1, 2)],
@@ -115,10 +123,10 @@ BENCHES = [
      [("standard", WEEKDAYS, 1, 2)],
      [233]),
     ("CAT-3", "Containment", 1, 2, "competent",
-     [("standard", [MON, WED], 1, 2)],
+     [("standard", WEEKDAYS, 1, 2)],
      [145, 323, 409, 410, 426, 433]),
     ("Mycology", "Containment", 1, 2, "competent",
-     [("standard", [THU], 1, 2)],
+     [("standard", WEEKDAYS, 1, 2)],
      [339]),
     ("CSF", "Sterile Sites", 1, 1, "competent",
      [("standard", WEEKDAYS, 1, 1)],
@@ -127,13 +135,13 @@ BENCHES = [
      [("standard", WEEKDAYS, 1, 2), ("weekend", [SAT, SUN], 1, 1)],
      [266, 267]),
     ("Molecular", "Molecular & Serology", 1, 2, "competent",
-     [("standard", [WED], 1, 2)],
+     [("standard", WEEKDAYS, 1, 2)],
      [234]),
     ("Serology", "Molecular & Serology", 1, 2, "competent",
-     [("standard", [THU], 1, 2)],
+     [("standard", WEEKDAYS, 1, 2)],
      [99, 135, 136]),
     ("Reporting Ref Lab Reports", "Reporting", 1, 1, "competent",
-     [("standard", [WED], 1, 1)],
+     [("standard", WEEKDAYS, 1, 1)],
      [432]),
 ]
 
@@ -219,9 +227,39 @@ STAFF = [
     ("han", "TRN-0402",  "Hannah Ng",         "trainee",    1.00, WEEKDAYS, date(2025, 9, 1)),
     ("jos", "TRN-0409",  "Josef Kaminski",    "trainee",    1.00, WEEKDAYS, date(2026, 1, 12)),
     ("ama", "TRN-0415",  "Amara Diallo",      "trainee",    1.00, WEEKDAYS, date(2026, 4, 20)),
+
+    # ---- The weekday cover expansion ---------------------------------------
+    # Every bench now runs every weekday rather than on the two or three days
+    # it used to, which takes the weekday minimum from 13-16 people to 21. Ten
+    # more people carry that: two Senior BMS, because Reporting Ref Lab Reports
+    # needs one by rule and CAT-3 needs a trainer, and eight more for the daily
+    # headcount, signed off with an eye to the benches whose pools were
+    # shallowest. All are signed off rather than in training, because under the
+    # supervision rule a trainee on a bench consumes cover rather than adding
+    # it. See the headroom table printed at the end of this script.
+    ("mer", "SBMS-0071", "Meredith Vance",    "senior_bms", 1.00, WEEKDAYS, date(2016, 2, 15)),
+    ("ani", "SBMS-0084", "Anil Bhattacharya", "senior_bms", 1.00, WEEKDAYS, date(2017, 10, 2)),
+    ("eri", "BMS-0212",  "Erin Kowalczyk",    "bms",        1.00, WEEKDAYS, date(2020, 3, 16)),
+    ("fem", "BMS-0223",  "Femi Adeyemi",      "bms",        1.00, WEEKDAYS, date(2021, 5, 10)),
+    ("rut", "BMS-0237",  "Ruth Sandiford",    "bms",        1.00, WEEKDAYS, date(2019, 8, 19)),
+    ("cal", "BMS-0245",  "Callum Reith",      "bms",        1.00, WEEKDAYS, date(2022, 11, 7)),
+    ("har", "BMS-0258",  "Harriet Loxley",    "bms",        1.00, WEEKDAYS, date(2023, 4, 3)),
+    ("bea", "AP-0334",   "Bea Nakamura",      "ap",         1.00, WEEKDAYS, date(2021, 9, 27)),
+    ("ste", "AP-0341",   "Stefan Oyelaran",   "ap",         0.80, [MON, TUE, WED, THU], date(2023, 2, 13)),
+    ("mrt", "AP-0349",   "Marta Kubiak",      "ap",         0.60, [MON, TUE, WED], date(2024, 7, 15)),
 ]
 
 STAFF_BY_KEY = {s[0]: s for s in STAFF}
+
+# The ten added for weekday cover. 0010-0040 seed a database from nothing and
+# already contain them; 0050 is the same people as an additive script, for a
+# database that was seeded before the expansion.
+EXPANSION_KEYS = ["mer", "ani", "eri", "fem", "rut", "cal", "har", "bea",
+                  "ste", "mrt"]
+
+# Filled in by emit_competencies() so 0050 hands out exactly the assessment
+# dates and assessors 0030 did, rather than drawing its own.
+EXPANSION_CELLS: list[tuple] = []
 
 # staff key, start, end, kind, note
 ABSENCES = [
@@ -247,6 +285,10 @@ COMPETENCY: dict[str, dict[str, str]] = {
         "dan": "competent", "nad": "competent", "owe": "competent", "luc": "competent",
         "ibr": "competent", "daw": "competent", "kyl": "competent", "fio": "competent",
         "ree": "competent", "han": "trainee", "jos": "trainee", "ama": "trainee",
+        "mer": "competent", "ani": "competent", "eri": "competent",
+        "fem": "competent", "rut": "competent", "cal": "competent",
+        "har": "competent", "bea": "competent", "ste": "competent",
+        "mrt": "competent",
     },
     "Screening, Faeces and Tips Reading": {
         "ali": "trainer", "rak": "competent", "cla": "trainer", "pri": "competent",
@@ -254,50 +296,71 @@ COMPETENCY: dict[str, dict[str, str]] = {
         "dan": "competent", "nad": "competent", "owe": "competent", "luc": "competent",
         "ibr": "competent", "daw": "competent", "ree": "competent",
         "han": "trainee", "jos": "trainee",
+        "mer": "competent", "ani": "competent", "eri": "competent",
+        "fem": "competent", "rut": "competent", "cal": "competent",
+        "har": "competent", "bea": "competent", "ste": "competent",
+        "mrt": "competent",
     },
     "Faeces Microscopy": {
         "ali": "trainer", "rak": "competent", "pri": "competent", "gra": "competent",
         "dan": "competent", "daw": "trainer", "ree": "competent", "kyl": "competent",
         "ama": "trainee",
+        "fem": "competent", "har": "competent", "bea": "competent",
+        "mrt": "competent",
     },
     "Wounds Reading": {
         "ali": "trainer", "rak": "competent", "cla": "trainer", "pri": "competent",
         "tom": "competent", "gra": "competent", "mar": "competent", "sar": "competent",
         "dan": "competent", "nad": "competent", "owe": "competent", "luc": "competent",
         "ibr": "competent", "han": "trainee",
+        "mer": "competent", "eri": "competent", "fem": "competent",
+        "rut": "competent", "har": "competent", "ste": "competent",
     },
     "Urogenitals Reading": {
         "ali": "trainer", "cla": "trainer", "tom": "competent", "gra": "competent",
         "sar": "competent", "nad": "competent", "owe": "competent", "han": "trainee",
+        "fem": "competent", "rut": "competent", "har": "competent",
     },
     "ENT Reading": {
         "ali": "trainer", "cla": "trainer", "tom": "competent", "gra": "competent",
         "mar": "competent", "nad": "competent", "owe": "competent", "han": "trainee",
+        "eri": "competent", "fem": "competent", "har": "competent",
     },
     "CAT-3 Reading": {
         "ali": "trainer", "rak": "trainer", "cla": "competent", "mar": "competent",
         "owe": "competent",
+        "mer": "competent", "ani": "trainer", "fem": "competent",
+        "cal": "competent",
     },
     "EUCAST Sensitivity Testing": {
         "ali": "trainer", "rak": "trainer", "cla": "competent", "pri": "competent",
         "tom": "competent", "gra": "competent", "mar": "competent", "sar": "competent",
         "dan": "competent", "nad": "competent", "owe": "competent", "luc": "competent",
         "ibr": "competent", "ama": "trainee",
+        "mer": "competent", "ani": "competent", "eri": "competent",
+        "rut": "competent", "cal": "competent", "har": "competent",
+        "ste": "competent",
     },
     "Processing Anaerobes": {
         "ali": "trainer", "rak": "competent", "pri": "competent", "mar": "competent",
         "dan": "competent", "daw": "trainer", "kyl": "competent", "ree": "competent",
         "fio": "competent", "jos": "trainee",
+        "cal": "competent", "har": "competent", "bea": "competent",
+        "ste": "competent",
     },
     "Deep Wounds/ Tissues": {
         "ali": "trainer", "rak": "competent", "cla": "competent", "pri": "competent",
         "mar": "competent", "sar": "competent", "owe": "competent", "dan": "competent",
         "luc": "competent", "daw": "competent", "ree": "competent", "ama": "trainee",
+        "mer": "competent", "ani": "competent", "rut": "competent",
+        "cal": "competent", "har": "competent",
     },
     "Trichomonas, Grams and Broths": {
         "ali": "trainer", "cla": "competent", "pri": "competent", "gra": "competent",
         "sar": "competent", "dan": "competent", "nad": "competent", "daw": "competent",
         "ree": "competent", "ama": "trainee",
+        "rut": "competent", "har": "competent", "bea": "competent",
+        "mrt": "competent",
     },
     "Quick Tests": {
         "ali": "trainer", "rak": "competent", "cla": "competent", "pri": "competent",
@@ -305,43 +368,63 @@ COMPETENCY: dict[str, dict[str, str]] = {
         "dan": "competent", "nad": "competent", "owe": "competent", "luc": "competent",
         "ibr": "competent", "daw": "trainer", "kyl": "competent", "fio": "competent",
         "ree": "competent", "han": "trainee", "jos": "trainee", "ama": "trainee",
+        "mer": "competent", "ani": "competent", "eri": "competent",
+        "fem": "competent", "rut": "competent", "cal": "competent",
+        "har": "competent", "bea": "competent", "ste": "competent",
+        "mrt": "competent",
     },
     "MALDI": {
         "ali": "trainer", "rak": "competent", "cla": "competent", "tom": "competent",
         "gra": "competent", "mar": "competent", "sar": "competent", "nad": "competent",
         "owe": "competent", "daw": "competent", "ree": "competent", "luc": "competent",
         "ibr": "competent",
+        "mer": "competent", "ani": "competent", "eri": "competent",
+        "fem": "competent", "rut": "competent", "cal": "competent",
+        "bea": "competent", "ste": "competent",
     },
     "CAT-3": {
         "ali": "trainer", "rak": "trainer", "cla": "competent", "mar": "competent",
         "owe": "competent", "gra": "competent", "ama": "trainee",
+        "mer": "competent", "ani": "trainer", "cal": "competent",
     },
-    # Deliberately thin: one signed-off mycologist. The Benches screen flags it,
-    # and it is the first thing that breaks when Rakesh books leave.
+    # Was one signed-off mycologist, which was survivable while the bench only
+    # ran on a Thursday. It runs every weekday now, so a single holder would
+    # nail Rakesh to it all week and lose the week outright the moment he books
+    # leave. Three more people, one of them a trainer, make it a real pool.
     "Mycology": {
         "rak": "trainer", "han": "trainee", "jos": "trainee",
+        "ani": "trainer", "eri": "competent", "cal": "competent",
     },
     "CSF": {
         "ali": "trainer", "rak": "trainer", "cla": "competent", "tom": "competent",
         "sar": "competent", "owe": "competent", "luc": "competent",
+        "mer": "competent", "eri": "competent", "rut": "competent",
     },
     "Blood Cultures": {
         "ali": "trainer", "rak": "competent", "cla": "trainer", "pri": "competent",
         "tom": "competent", "gra": "competent", "mar": "competent", "sar": "competent",
         "owe": "competent", "luc": "competent", "ibr": "competent", "nad": "competent",
         "jos": "trainee",
+        "mer": "competent", "ani": "competent", "eri": "competent",
+        "rut": "competent", "cal": "competent", "har": "competent",
     },
     "Molecular": {
         "rak": "trainer", "cla": "competent", "nad": "competent", "owe": "competent",
         "jos": "trainee",
+        "mer": "trainer", "ani": "competent", "eri": "competent",
     },
     "Serology": {
         "ali": "trainer", "cla": "competent", "tom": "competent", "nad": "competent",
         "sar": "competent",
+        "mer": "trainer", "eri": "competent", "rut": "competent",
     },
-    # Also deliberately thin: one person can sign off reference lab reports.
+    # Also widened, for the same reason and with the hard rule in mind: this
+    # bench takes exactly one person and that person must be a Senior BMS, so
+    # running it five days a week on Claire alone was one absence from
+    # infeasible.
     "Reporting Ref Lab Reports": {
         "cla": "trainer",
+        "mer": "trainer", "ani": "competent",
     },
 }
 
@@ -605,8 +688,10 @@ def emit_reference() -> str:
 def emit_staff() -> str:
     out = header(
         "020 staff, patterns and absences",
-        "20 synthetic staff across four grades, with contracted patterns that "
-        "leave 1-3 people of headroom on a weekday and three on a weekend.",
+        "30 synthetic staff across four grades, with contracted patterns that "
+        "leave four to eight people of headroom on a weekday and one at the "
+        "weekend. Every bench runs every weekday, so the weekday minimum is 21 "
+        "people and the roster has to carry it.",
     )
     out += "begin;\n\n"
 
@@ -710,6 +795,10 @@ def emit_competencies() -> str:
                 f"    ({sql_str(code)}, {sql_str(bench_name)}, {sql_str(level)}, "
                 f"{sql_str(assessed)}, {sql_str(expires)}, {sql_str(assessor)})"
             )
+            if key in EXPANSION_KEYS:
+                EXPANSION_CELLS.append(
+                    (code, bench_name, level, assessed, expires, assessor)
+                )
     out += ",\n".join(rows) + "\n)\n"
     out += textwrap.dedent("""\
         insert into competency (staff_id, bench_id, level, assessed_on, expires_on,
@@ -825,12 +914,158 @@ def emit_rules() -> str:
     return out
 
 
+def emit_expansion() -> str:
+    """0050: the same expansion as an additive script for a live database.
+
+    A fresh database does not need this file. 0010 to 0040 already contain the
+    thirty staff and the five-day bench pattern, so every statement here is a
+    no-op on a database seeded from them; it is written that way on purpose so
+    it can be run either way without thinking about it. What it is for is a
+    Supabase project that was seeded with the original twenty staff, where
+    re-running 0010 would truncate the runs, pins and published rotas already
+    in it.
+    """
+    out = header(
+        "050 weekday cover expansion",
+        "Additive: makes every bench run every weekday and adds the ten staff "
+        "that requires. Safe to run on a database already seeded from 0010-0040, "
+        "where it does nothing. Not needed for a fresh install.",
+    )
+    out += "begin;\n\n"
+
+    out += textwrap.dedent("""\
+        -- Every bench runs every weekday ------------------------------------
+        -- Benches used to run on the two or three days their work arrived, so
+        -- the Rota Board read "Not run" for most of the grid. The weekend rows
+        -- are left alone: Saturday and Sunday stay Urines and Blood Cultures,
+        -- one person each.
+        update bench_shift_requirement r
+           set weekdays = '{1,2,3,4,5}'::smallint[]
+          from shift s
+         where s.id = r.shift_id
+           and s.code = 'DAY'
+           and r.label = 'standard'
+           and r.weekdays <> '{1,2,3,4,5}'::smallint[];
+
+        """)
+
+    out += ("-- The ten new staff ---------------------------------------------------\n"
+            "-- Synthetic, like everyone else here. Two Senior BMS so reference lab\n"
+            "-- reports and CAT-3 are not one person deep, five BMS and three APs.\n")
+    out += ("insert into staff (staff_code, full_name, grade, fte, started_on, status) "
+            "values\n")
+    rows = []
+    for key in EXPANSION_KEYS:
+        _k, code, name, grade, fte, _days, started = STAFF_BY_KEY[key]
+        rows.append(
+            f"  ({sql_str(code)}, {sql_str(name)}, {sql_str(grade)}, "
+            f"{fte:.2f}, {sql_str(started)}, 'active')"
+        )
+    out += ",\n".join(rows) + "\non conflict (staff_code) do nothing;\n\n"
+
+    out += "-- Their contracted patterns (Day shift) -------------------------------\n"
+    out += "with data(staff_code, weekday) as (\n  values\n"
+    rows = []
+    for key in EXPANSION_KEYS:
+        _k, code, _n, _g, _f, days, _s = STAFF_BY_KEY[key]
+        for d in days:
+            rows.append(f"    ({sql_str(code)}, {d}::smallint)")
+    out += ",\n".join(rows) + "\n)\n"
+    out += textwrap.dedent("""\
+        insert into availability (staff_id, weekday, shift_id, is_available)
+        select s.id, d.weekday, sh.id, true
+        from data d
+        join staff s on s.staff_code = d.staff_code
+        join shift sh on sh.code = 'DAY'
+        on conflict (staff_id, weekday, shift_id) do nothing;
+
+        """)
+
+    out += "-- What they are signed off on ----------------------------------------\n"
+    out += ("with data(staff_code, bench_name, level, assessed_on, expires_on, "
+            "assessor_code) as (\n  values\n")
+    rows = []
+    for code, bench_name, level, assessed, expires, assessor in EXPANSION_CELLS:
+        rows.append(
+            f"    ({sql_str(code)}, {sql_str(bench_name)}, {sql_str(level)}, "
+            f"{sql_str(assessed)}, {sql_str(expires)}, {sql_str(assessor)})"
+        )
+    out += ",\n".join(rows) + "\n)\n"
+    out += textwrap.dedent("""\
+        insert into competency (staff_id, bench_id, level, assessed_on, expires_on,
+                                assessor_id, document_ref)
+        select
+          s.id,
+          b.id,
+          d.level::competency_level,
+          d.assessed_on::date,
+          d.expires_on::date,
+          a.id,
+          (select cd.doc_number
+             from competency_document cd
+            where cd.bench_id = b.id
+            order by cd.sort_order
+            limit 1)
+        from data d
+        join staff s on s.staff_code = d.staff_code
+        join bench b on b.name = d.bench_name
+        left join staff a on a.staff_code = d.assessor_code
+        on conflict (staff_id, bench_id) do nothing;
+
+        -- Evidence trail: signed-off staff hold every document for the bench.
+        insert into staff_document (staff_id, document_id, status, assessed_on, expires_on)
+        select c.staff_id, cd.id, 'signed_off', c.assessed_on, c.expires_on
+        from competency c
+        join staff s on s.id = c.staff_id
+        join competency_document cd on cd.bench_id = c.bench_id
+        where c.level in ('competent', 'trainer')
+          and s.staff_code in (%s)
+        on conflict (staff_id, document_id) do nothing;
+
+        """ % ", ".join(sql_str(STAFF_BY_KEY[k][1]) for k in EXPANSION_KEYS))
+
+    out += "commit;\n\n"
+
+    out += textwrap.dedent("""\
+        -- Did it work? One row per weekday: how many people the benches ask for
+        -- that day, and how many signed-off staff are contracted to be in. The
+        -- second number has to be at least the first, and a couple higher is
+        -- what keeps the week solvable when somebody rings in sick.
+        select
+          d.weekday,
+          (select coalesce(sum(r.min_staff), 0)
+             from bench_shift_requirement r
+             join shift sh on sh.id = r.shift_id and sh.code = 'DAY'
+            where d.weekday = any (r.weekdays))                    as people_needed,
+          (select count(*)
+             from staff s
+            where s.status = 'active'
+              and exists (select 1
+                            from availability a
+                            join shift sh on sh.id = a.shift_id and sh.code = 'DAY'
+                           where a.staff_id = s.id
+                             and a.weekday = d.weekday
+                             and a.is_available)
+              and exists (select 1
+                            from competency c
+                           where c.staff_id = s.id
+                             and c.level in ('competent', 'trainer')
+                             and (c.expires_on is null
+                                  or c.expires_on >= current_date)))  as signed_off_in
+        from generate_series(1, 7) as d(weekday)
+        order by d.weekday;
+        """)
+    return out
+
+
 def main() -> None:
     files = {
         "0010_reference_data.sql": emit_reference(),
         "0020_staff.sql": emit_staff(),
         "0030_competencies.sql": emit_competencies(),
         "0040_rules_settings.sql": emit_rules(),
+        # After the competency file: 0050 reuses the dates it drew.
+        "0050_weekday_expansion.sql": emit_expansion(),
     }
     for name, body in files.items():
         (OUT / name).write_text(body)

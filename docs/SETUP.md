@@ -68,13 +68,20 @@ Same again, in order:
 
 ```
 supabase/seed/0010_reference_data.sql   2 shifts, 10 groups, 20 benches, 51 documents
-supabase/seed/0020_staff.sql            20 staff, contracted patterns, absences
+supabase/seed/0020_staff.sql            30 staff, contracted patterns, absences
 supabase/seed/0030_competencies.sql     the competency matrix and document sign-off
 supabase/seed/0040_rules_settings.sql   8 rules and the solver weights
+supabase/seed/0050_weekday_expansion.sql  nothing, on a database seeded from the above
 ```
 
-`0010` begins with a `truncate`, so re-running the four resets the operational
-data to a clean state. It does not touch `auth.users`.
+`0010` begins with a `truncate`, so re-running the first four resets the
+operational data to a clean state. It does not touch `auth.users`.
+
+`0050` is the odd one out and a fresh project does not need it. It adds the ten
+staff and the five-day bench pattern to a database that was seeded *before*
+that change, which `0010` would otherwise cost you every run of the app since.
+Every statement in it is written to do nothing when the rows are already there,
+so running it anyway is harmless.
 
 To change the dummy data, edit `supabase/seed/generate_seed.py` and re-run it —
 the `.sql` files are generated, and CI fails if they drift from the generator.

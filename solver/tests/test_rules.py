@@ -220,7 +220,15 @@ def test_hard_rule_that_cannot_hold_makes_the_week_infeasible(problem):
 
 
 def test_soft_rule_breach_is_reported_rather_than_blocking(problem):
-    """Force a soft breach and check it is named, weighted and located."""
+    """Force a soft breach and check it is named, weighted and located.
+
+    The weight is deliberately under weight_idle_staff. Keeping Alison off the
+    rota entirely is possible now that the roster covers every bench every
+    weekday, so the only thing that makes the solver break this rule is the
+    arithmetic: a day of her sitting idle costs 40, breaking the rule costs 20.
+    A weight above the idle cost would simply be honoured and the test would
+    prove nothing.
+    """
     rules = list(problem.rules) + [
         Rule(
             id="soft-test", name="Keep Alison off Urines", action="cannot_be_assigned",
@@ -228,7 +236,7 @@ def test_soft_rule_breach_is_reported_rather_than_blocking(problem):
             conditions={"op": "all", "children": [
                 cond("person", "is", ["SBMS-0041"]),
             ]},
-            is_hard=False, weight=90,
+            is_hard=False, weight=20,
             plain_english="Alison Ferreira should not be assigned at all.",
         )
     ]
@@ -236,6 +244,6 @@ def test_soft_rule_breach_is_reported_rather_than_blocking(problem):
     assert solution.status == "solved_with_breaches"
     assert any(b.rule_name == "Keep Alison off Urines" for b in solution.breaches)
     breach = next(b for b in solution.breaches if b.rule_name == "Keep Alison off Urines")
-    assert breach.weight == 90
+    assert breach.weight == 20
     assert breach.staff_id == "SBMS-0041"
     assert breach.detail

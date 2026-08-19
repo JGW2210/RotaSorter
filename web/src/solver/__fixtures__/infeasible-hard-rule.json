@@ -544,6 +544,241 @@
     "shiftId": "DAY",
     "staffId": "TRN-0415",
     "weekday": 5
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "SBMS-0071",
+    "weekday": 1
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "SBMS-0071",
+    "weekday": 2
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "SBMS-0071",
+    "weekday": 3
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "SBMS-0071",
+    "weekday": 4
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "SBMS-0071",
+    "weekday": 5
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "SBMS-0084",
+    "weekday": 1
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "SBMS-0084",
+    "weekday": 2
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "SBMS-0084",
+    "weekday": 3
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "SBMS-0084",
+    "weekday": 4
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "SBMS-0084",
+    "weekday": 5
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0212",
+    "weekday": 1
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0212",
+    "weekday": 2
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0212",
+    "weekday": 3
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0212",
+    "weekday": 4
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0212",
+    "weekday": 5
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0223",
+    "weekday": 1
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0223",
+    "weekday": 2
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0223",
+    "weekday": 3
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0223",
+    "weekday": 4
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0223",
+    "weekday": 5
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0237",
+    "weekday": 1
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0237",
+    "weekday": 2
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0237",
+    "weekday": 3
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0237",
+    "weekday": 4
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0237",
+    "weekday": 5
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0245",
+    "weekday": 1
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0245",
+    "weekday": 2
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0245",
+    "weekday": 3
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0245",
+    "weekday": 4
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0245",
+    "weekday": 5
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0258",
+    "weekday": 1
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0258",
+    "weekday": 2
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0258",
+    "weekday": 3
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0258",
+    "weekday": 4
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "BMS-0258",
+    "weekday": 5
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0334",
+    "weekday": 1
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0334",
+    "weekday": 2
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0334",
+    "weekday": 3
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0334",
+    "weekday": 4
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0334",
+    "weekday": 5
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0341",
+    "weekday": 1
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0341",
+    "weekday": 2
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0341",
+    "weekday": 3
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0341",
+    "weekday": 4
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0349",
+    "weekday": 1
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0349",
+    "weekday": 2
+   },
+   {
+    "shiftId": "DAY",
+    "staffId": "AP-0349",
+    "weekday": 3
    }
   ],
   "benches": [
@@ -810,6 +1045,66 @@
     "staffId": "TRN-0415"
    },
    {
+    "benchId": "Urines",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "Urines",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0084"
+   },
+   {
+    "benchId": "Urines",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
+   },
+   {
+    "benchId": "Urines",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0223"
+   },
+   {
+    "benchId": "Urines",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
+   },
+   {
+    "benchId": "Urines",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0245"
+   },
+   {
+    "benchId": "Urines",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
+   },
+   {
+    "benchId": "Urines",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0334"
+   },
+   {
+    "benchId": "Urines",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0341"
+   },
+   {
+    "benchId": "Urines",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0349"
+   },
+   {
     "benchId": "Screening, Faeces and Tips Reading",
     "expiresOn": null,
     "level": "trainer",
@@ -912,6 +1207,66 @@
     "staffId": "TRN-0409"
    },
    {
+    "benchId": "Screening, Faeces and Tips Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "Screening, Faeces and Tips Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0084"
+   },
+   {
+    "benchId": "Screening, Faeces and Tips Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
+   },
+   {
+    "benchId": "Screening, Faeces and Tips Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0223"
+   },
+   {
+    "benchId": "Screening, Faeces and Tips Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
+   },
+   {
+    "benchId": "Screening, Faeces and Tips Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0245"
+   },
+   {
+    "benchId": "Screening, Faeces and Tips Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
+   },
+   {
+    "benchId": "Screening, Faeces and Tips Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0334"
+   },
+   {
+    "benchId": "Screening, Faeces and Tips Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0341"
+   },
+   {
+    "benchId": "Screening, Faeces and Tips Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0349"
+   },
+   {
     "benchId": "Faeces Microscopy",
     "expiresOn": null,
     "level": "trainer",
@@ -964,6 +1319,30 @@
     "expiresOn": null,
     "level": "trainee",
     "staffId": "TRN-0415"
+   },
+   {
+    "benchId": "Faeces Microscopy",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0223"
+   },
+   {
+    "benchId": "Faeces Microscopy",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
+   },
+   {
+    "benchId": "Faeces Microscopy",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0334"
+   },
+   {
+    "benchId": "Faeces Microscopy",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0349"
    },
    {
     "benchId": "Wounds Reading",
@@ -1050,6 +1429,42 @@
     "staffId": "TRN-0402"
    },
    {
+    "benchId": "Wounds Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "Wounds Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
+   },
+   {
+    "benchId": "Wounds Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0223"
+   },
+   {
+    "benchId": "Wounds Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
+   },
+   {
+    "benchId": "Wounds Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
+   },
+   {
+    "benchId": "Wounds Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0341"
+   },
+   {
     "benchId": "Urogenitals Reading",
     "expiresOn": null,
     "level": "trainer",
@@ -1096,6 +1511,24 @@
     "expiresOn": null,
     "level": "trainee",
     "staffId": "TRN-0402"
+   },
+   {
+    "benchId": "Urogenitals Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0223"
+   },
+   {
+    "benchId": "Urogenitals Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
+   },
+   {
+    "benchId": "Urogenitals Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
    },
    {
     "benchId": "ENT Reading",
@@ -1146,6 +1579,24 @@
     "staffId": "TRN-0402"
    },
    {
+    "benchId": "ENT Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
+   },
+   {
+    "benchId": "ENT Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0223"
+   },
+   {
+    "benchId": "ENT Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
+   },
+   {
     "benchId": "CAT-3 Reading",
     "expiresOn": null,
     "level": "trainer",
@@ -1174,6 +1625,30 @@
     "expiresOn": null,
     "level": "competent",
     "staffId": "BMS-0189"
+   },
+   {
+    "benchId": "CAT-3 Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "CAT-3 Reading",
+    "expiresOn": null,
+    "level": "trainer",
+    "staffId": "SBMS-0084"
+   },
+   {
+    "benchId": "CAT-3 Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0223"
+   },
+   {
+    "benchId": "CAT-3 Reading",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0245"
    },
    {
     "benchId": "EUCAST Sensitivity Testing",
@@ -1260,6 +1735,48 @@
     "staffId": "TRN-0415"
    },
    {
+    "benchId": "EUCAST Sensitivity Testing",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "EUCAST Sensitivity Testing",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0084"
+   },
+   {
+    "benchId": "EUCAST Sensitivity Testing",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
+   },
+   {
+    "benchId": "EUCAST Sensitivity Testing",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
+   },
+   {
+    "benchId": "EUCAST Sensitivity Testing",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0245"
+   },
+   {
+    "benchId": "EUCAST Sensitivity Testing",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
+   },
+   {
+    "benchId": "EUCAST Sensitivity Testing",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0341"
+   },
+   {
     "benchId": "Processing Anaerobes",
     "expiresOn": null,
     "level": "trainer",
@@ -1318,6 +1835,30 @@
     "expiresOn": null,
     "level": "trainee",
     "staffId": "TRN-0409"
+   },
+   {
+    "benchId": "Processing Anaerobes",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0245"
+   },
+   {
+    "benchId": "Processing Anaerobes",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
+   },
+   {
+    "benchId": "Processing Anaerobes",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0334"
+   },
+   {
+    "benchId": "Processing Anaerobes",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0341"
    },
    {
     "benchId": "Deep Wounds/ Tissues",
@@ -1392,6 +1933,36 @@
     "staffId": "TRN-0415"
    },
    {
+    "benchId": "Deep Wounds/ Tissues",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "Deep Wounds/ Tissues",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0084"
+   },
+   {
+    "benchId": "Deep Wounds/ Tissues",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
+   },
+   {
+    "benchId": "Deep Wounds/ Tissues",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0245"
+   },
+   {
+    "benchId": "Deep Wounds/ Tissues",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
+   },
+   {
     "benchId": "Trichomonas, Grams and Broths",
     "expiresOn": null,
     "level": "trainer",
@@ -1450,6 +2021,30 @@
     "expiresOn": null,
     "level": "trainee",
     "staffId": "TRN-0415"
+   },
+   {
+    "benchId": "Trichomonas, Grams and Broths",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
+   },
+   {
+    "benchId": "Trichomonas, Grams and Broths",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
+   },
+   {
+    "benchId": "Trichomonas, Grams and Broths",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0334"
+   },
+   {
+    "benchId": "Trichomonas, Grams and Broths",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0349"
    },
    {
     "benchId": "Quick Tests",
@@ -1572,6 +2167,66 @@
     "staffId": "TRN-0415"
    },
    {
+    "benchId": "Quick Tests",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "Quick Tests",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0084"
+   },
+   {
+    "benchId": "Quick Tests",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
+   },
+   {
+    "benchId": "Quick Tests",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0223"
+   },
+   {
+    "benchId": "Quick Tests",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
+   },
+   {
+    "benchId": "Quick Tests",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0245"
+   },
+   {
+    "benchId": "Quick Tests",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
+   },
+   {
+    "benchId": "Quick Tests",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0334"
+   },
+   {
+    "benchId": "Quick Tests",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0341"
+   },
+   {
+    "benchId": "Quick Tests",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0349"
+   },
+   {
     "benchId": "MALDI",
     "expiresOn": null,
     "level": "trainer",
@@ -1650,6 +2305,54 @@
     "staffId": "BMS-0201"
    },
    {
+    "benchId": "MALDI",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "MALDI",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0084"
+   },
+   {
+    "benchId": "MALDI",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
+   },
+   {
+    "benchId": "MALDI",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0223"
+   },
+   {
+    "benchId": "MALDI",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
+   },
+   {
+    "benchId": "MALDI",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0245"
+   },
+   {
+    "benchId": "MALDI",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0334"
+   },
+   {
+    "benchId": "MALDI",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "AP-0341"
+   },
+   {
     "benchId": "CAT-3",
     "expiresOn": null,
     "level": "trainer",
@@ -1692,6 +2395,24 @@
     "staffId": "TRN-0415"
    },
    {
+    "benchId": "CAT-3",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "CAT-3",
+    "expiresOn": null,
+    "level": "trainer",
+    "staffId": "SBMS-0084"
+   },
+   {
+    "benchId": "CAT-3",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0245"
+   },
+   {
     "benchId": "Mycology",
     "expiresOn": null,
     "level": "trainer",
@@ -1708,6 +2429,24 @@
     "expiresOn": null,
     "level": "trainee",
     "staffId": "TRN-0409"
+   },
+   {
+    "benchId": "Mycology",
+    "expiresOn": null,
+    "level": "trainer",
+    "staffId": "SBMS-0084"
+   },
+   {
+    "benchId": "Mycology",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
+   },
+   {
+    "benchId": "Mycology",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0245"
    },
    {
     "benchId": "CSF",
@@ -1750,6 +2489,24 @@
     "expiresOn": null,
     "level": "competent",
     "staffId": "BMS-0194"
+   },
+   {
+    "benchId": "CSF",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "CSF",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
+   },
+   {
+    "benchId": "CSF",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
    },
    {
     "benchId": "Blood Cultures",
@@ -1830,6 +2587,42 @@
     "staffId": "TRN-0409"
    },
    {
+    "benchId": "Blood Cultures",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "Blood Cultures",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0084"
+   },
+   {
+    "benchId": "Blood Cultures",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
+   },
+   {
+    "benchId": "Blood Cultures",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
+   },
+   {
+    "benchId": "Blood Cultures",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0245"
+   },
+   {
+    "benchId": "Blood Cultures",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0258"
+   },
+   {
     "benchId": "Molecular",
     "expiresOn": null,
     "level": "trainer",
@@ -1858,6 +2651,24 @@
     "expiresOn": null,
     "level": "trainee",
     "staffId": "TRN-0409"
+   },
+   {
+    "benchId": "Molecular",
+    "expiresOn": null,
+    "level": "trainer",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "Molecular",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0084"
+   },
+   {
+    "benchId": "Molecular",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
    },
    {
     "benchId": "Serology",
@@ -1890,10 +2701,40 @@
     "staffId": "BMS-0155"
    },
    {
+    "benchId": "Serology",
+    "expiresOn": null,
+    "level": "trainer",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "Serology",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0212"
+   },
+   {
+    "benchId": "Serology",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "BMS-0237"
+   },
+   {
     "benchId": "Reporting Ref Lab Reports",
     "expiresOn": null,
     "level": "trainer",
     "staffId": "SBMS-0063"
+   },
+   {
+    "benchId": "Reporting Ref Lab Reports",
+    "expiresOn": null,
+    "level": "trainer",
+    "staffId": "SBMS-0071"
+   },
+   {
+    "benchId": "Reporting Ref Lab Reports",
+    "expiresOn": null,
+    "level": "competent",
+    "staffId": "SBMS-0084"
    }
   ],
   "pins": [],
@@ -1949,7 +2790,9 @@
     "shiftId": "DAY",
     "weekdays": [
      1,
+     2,
      3,
+     4,
      5
     ]
    },
@@ -1976,8 +2819,11 @@
     "requiredLevel": null,
     "shiftId": "DAY",
     "weekdays": [
+     1,
      2,
-     4
+     3,
+     4,
+     5
     ]
    },
    {
@@ -1988,8 +2834,11 @@
     "requiredLevel": null,
     "shiftId": "DAY",
     "weekdays": [
+     1,
      2,
-     4
+     3,
+     4,
+     5
     ]
    },
    {
@@ -2000,7 +2849,10 @@
     "requiredLevel": null,
     "shiftId": "DAY",
     "weekdays": [
+     1,
+     2,
      3,
+     4,
      5
     ]
    },
@@ -2028,7 +2880,9 @@
     "shiftId": "DAY",
     "weekdays": [
      1,
+     2,
      3,
+     4,
      5
     ]
    },
@@ -2055,8 +2909,11 @@
     "requiredLevel": null,
     "shiftId": "DAY",
     "weekdays": [
+     1,
      2,
-     4
+     3,
+     4,
+     5
     ]
    },
    {
@@ -2098,7 +2955,10 @@
     "shiftId": "DAY",
     "weekdays": [
      1,
-     3
+     2,
+     3,
+     4,
+     5
     ]
    },
    {
@@ -2109,7 +2969,11 @@
     "requiredLevel": null,
     "shiftId": "DAY",
     "weekdays": [
-     4
+     1,
+     2,
+     3,
+     4,
+     5
     ]
    },
    {
@@ -2162,7 +3026,11 @@
     "requiredLevel": null,
     "shiftId": "DAY",
     "weekdays": [
-     3
+     1,
+     2,
+     3,
+     4,
+     5
     ]
    },
    {
@@ -2173,7 +3041,11 @@
     "requiredLevel": null,
     "shiftId": "DAY",
     "weekdays": [
-     4
+     1,
+     2,
+     3,
+     4,
+     5
     ]
    },
    {
@@ -2184,7 +3056,11 @@
     "requiredLevel": null,
     "shiftId": "DAY",
     "weekdays": [
-     3
+     1,
+     2,
+     3,
+     4,
+     5
     ]
    }
   ],
@@ -2550,6 +3426,76 @@
     "fullName": "Amara Diallo",
     "grade": "trainee",
     "id": "TRN-0415",
+    "status": "active"
+   },
+   {
+    "code": "SBMS-0071",
+    "fullName": "Meredith Vance",
+    "grade": "senior_bms",
+    "id": "SBMS-0071",
+    "status": "active"
+   },
+   {
+    "code": "SBMS-0084",
+    "fullName": "Anil Bhattacharya",
+    "grade": "senior_bms",
+    "id": "SBMS-0084",
+    "status": "active"
+   },
+   {
+    "code": "BMS-0212",
+    "fullName": "Erin Kowalczyk",
+    "grade": "bms",
+    "id": "BMS-0212",
+    "status": "active"
+   },
+   {
+    "code": "BMS-0223",
+    "fullName": "Femi Adeyemi",
+    "grade": "bms",
+    "id": "BMS-0223",
+    "status": "active"
+   },
+   {
+    "code": "BMS-0237",
+    "fullName": "Ruth Sandiford",
+    "grade": "bms",
+    "id": "BMS-0237",
+    "status": "active"
+   },
+   {
+    "code": "BMS-0245",
+    "fullName": "Callum Reith",
+    "grade": "bms",
+    "id": "BMS-0245",
+    "status": "active"
+   },
+   {
+    "code": "BMS-0258",
+    "fullName": "Harriet Loxley",
+    "grade": "bms",
+    "id": "BMS-0258",
+    "status": "active"
+   },
+   {
+    "code": "AP-0334",
+    "fullName": "Bea Nakamura",
+    "grade": "ap",
+    "id": "AP-0334",
+    "status": "active"
+   },
+   {
+    "code": "AP-0341",
+    "fullName": "Stefan Oyelaran",
+    "grade": "ap",
+    "id": "AP-0341",
+    "status": "active"
+   },
+   {
+    "code": "AP-0349",
+    "fullName": "Marta Kubiak",
+    "grade": "ap",
+    "id": "AP-0349",
     "status": "active"
    }
   ],

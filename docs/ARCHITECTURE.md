@@ -122,10 +122,11 @@ has several documents and people sign off one at a time. Urines alone is 93,
 matrix edits and the solver reads; `staff_document` holds the evidence trail
 underneath it.
 
-**`bench_shift_requirement.weekdays`.** Not every bench runs every day. Mycology
-is Thursday, reference lab reports are read on a Wednesday. Without this the
-week asks for more benches than there are people to staff them. The `label`
-column lets one bench carry a separate, smaller weekend requirement.
+**`bench_shift_requirement.weekdays`.** Not every bench runs every day. Every
+bench runs Monday to Friday; Saturday and Sunday are Urines and Blood Cultures
+only. Which days a bench runs is the dial that decides whether a week is
+coverable at all, and it is data rather than code. The `label` column lets one
+bench carry a separate, smaller weekend requirement.
 
 **`pin` as its own table.** Pins are solver *inputs*; assignments are *outputs*.
 Keeping them apart means a re-solve can discard every assignment for the week

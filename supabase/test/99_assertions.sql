@@ -6,8 +6,8 @@ declare
   n int;
   expected constant jsonb := '{
     "shift": 2, "bench_group": 10, "bench": 20, "competency_document": 51,
-    "bench_shift_requirement": 22, "staff": 20, "absence": 8,
-    "competency": 201, "rule": 8, "solver_setting": 7
+    "bench_shift_requirement": 22, "staff": 30, "absence": 8,
+    "competency": 302, "rule": 8, "solver_setting": 7
   }'::jsonb;
   t text;
   want int;
@@ -22,8 +22,8 @@ begin
 
   -- Availability: one row per contracted weekday per person, Day shift only.
   select count(*) into n from availability;
-  if n <> 96 then
-    raise exception 'availability has % rows, expected 96', n;
+  if n <> 143 then
+    raise exception 'availability has % rows, expected 143', n;
   end if;
 
   -- RLS must be enabled on every table in public, with no exceptions.
@@ -63,14 +63,21 @@ begin
   values ((select id from bench limit 1), (select id from shift limit 1), 'probe', '{6,7}');
   delete from bench_shift_requirement where label = 'probe';
 
-  -- The two deliberately thin benches, which the Benches screen flags.
+  -- No bench may be one deep. Every bench runs every weekday now, so a bench
+  -- whose signed-off pool only just meets its minimum loses the whole week the
+  -- first time that person books leave. Counted from the matrix rather than
+  -- v_bench_pool, which filters on current_date, so this says the same thing
+  -- whenever it is run.
   select count(*) into n
-    from v_bench_pool
-   where competent_count <= min_staff;
-  if n < 2 then
-    raise exception 'expected at least 2 thin benches, found %', n;
+    from bench b
+   where (
+     select count(*) from competency c
+      where c.bench_id = b.id and c.level in ('competent', 'trainer')
+   ) <= b.min_staff;
+  if n <> 0 then
+    raise exception '% bench(es) have no signed-off cover to spare', n;
   end if;
-  raise notice 'thin benches present: %', n;
+  raise notice 'every bench has cover to spare';
 
   -- Trainees exist and are on benches they are not signed off for.
   select count(*) into n from competency where level = 'trainee';

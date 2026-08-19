@@ -38,13 +38,21 @@ data changes, not code changes.
 
 ### Coverage is per weekday, not per shift alone
 
-The spec's `bench` table has a single "Min staff, per shift". Twenty benches
-each needing someone every weekday is 20+ people a day, against a roster of 20
-with part-time patterns and leave, so every week would have been infeasible.
+The spec's `bench` table has a single "Min staff, per shift".
+`bench_shift_requirement` carries a `weekdays` array instead, so a bench can
+run on some days and not others, and so a weekend service can be a smaller
+requirement than the weekday one rather than the same one repeated.
 
-`bench_shift_requirement` therefore carries a `weekdays` array. Benches run on
-the days they actually run: Mycology on Thursday, reference lab reports on
-Wednesday, CAT-3 set up Monday and Wednesday and read Wednesday and Friday.
+Every bench now runs every weekday, which is what the array is set to. It was
+not always: the first roster of 20 could not cover 20 benches five days a week,
+so benches ran on the days their work actually arrived — Mycology on a
+Thursday, reference lab reports on a Wednesday — and the Rota Board read "Not
+run" over most of the grid. Filling every bench every weekday takes the weekday
+minimum from 13 to 16 people, depending on the day, to 21 every day, and the
+roster was grown to 30 to carry it. The
+mechanism is unchanged and the weekend still uses it: Saturday and Sunday are
+Urines and Blood Cultures, one person each.
+
 `bench.min_staff` and `bench.max_staff` remain as the defaults the Benches
 screen edits.
 
@@ -69,7 +77,9 @@ something to show. Expiry is checked against the *work date*, not today, so a
 signoff lapsing mid-week removes that person from the back half of it.
 
 **Weekends run a skeleton service.** Urines and Blood Cultures only, one person
-each, covered by the three staff on Wednesday-to-Sunday patterns.
+each, covered by the three staff on Wednesday-to-Sunday patterns. Every other
+bench runs Monday to Friday. Extending the weekend to all twenty benches would
+need 17 more people again, every one of them working both Saturday and Sunday.
 
 **60 days is "expiring soon"**, from the spec's Staff table. It is in
 `v_staff_competency_summary` and `v_competency_matrix`, not in the app.
@@ -78,24 +88,37 @@ each, covered by the three staff on Wednesday-to-Sunday patterns.
 
 All invented. No real employee records at any point.
 
-20 staff: 3 Senior BMS, 10 BMS, 4 Assistant Practitioners, 3 trainees. Fourteen
-work Monday to Friday; the rest are 0.8 and 0.6 patterns and three
+30 staff: 5 Senior BMS, 15 BMS, 7 Assistant Practitioners, 3 trainees.
+Twenty-two work Monday to Friday; the rest are 0.8 and 0.6 patterns and three
 Wednesday-to-Sunday patterns that carry the weekend.
 
-The seeded week (14–20 September 2026, the week the spec mocks up) is
-deliberately tight — two to four people of headroom on a weekday, one at the
-weekend. A roomy week makes a dull demo and hides exactly the problems this
-tool exists to surface.
+Ten of those thirty are there to make five-day bench cover possible, and they
+are all signed off rather than in training: under the supervision rule a
+trainee on a bench consumes cover rather than adding it, so a trainee cannot be
+the answer to an uncovered bench. Eight is the arithmetic minimum. The week
+solves on eight, but only exactly: 21 of the 28 people could not then book a
+week's leave without the week going infeasible. On ten, none of the thirty can
+break it single-handed, which is the difference between a demo that survives
+being poked and one that does not.
 
-Two benches are thin on purpose, and the Benches screen flags both:
-
-- **Mycology** — one signed-off mycologist and two trainees. It breaks the
-  first time Rakesh Menon books leave.
-- **Reporting Ref Lab Reports** — one person can sign off reference lab
-  reports, and a hard rule requires a Senior BMS on it.
+The seeded week (14–20 September 2026, the week the spec mocks up) leaves four
+people of headroom on the tightest weekday and one at the weekend. The tension
+has moved rather than gone: what used to be scarce was people, and what is
+scarce now is the four benches with the shallowest signed-off pools —
+Reporting Ref Lab Reports, Mycology, Molecular and Serology — which is what the
+Benches screen and the Competency Matrix are for.
 
 Three people are away during the seeded week: annual leave Monday to Wednesday,
 annual leave Thursday and Friday, and one sickness day on the Tuesday.
+
+Two benches used to be thin on purpose, and are no longer: Mycology had one
+signed-off mycologist and Reporting Ref Lab Reports had one person who could
+sign off a report. That was survivable while those benches ran one day a week.
+Running them five days a week on one person each would have nailed Rakesh Menon
+and Claire Dunwoody to a single bench all week and lost the week outright the
+first time either booked leave, so both pools were widened. The infeasibility
+demo is unaffected: it is the paused *Blood Cultures needs three people* rule,
+which asks for more people than the bench's own maximum allows.
 
 Eight rules are seeded, seven active. The eighth — *Blood Cultures needs three
 people* — is paused on purpose. Activate it on the Rules screen to watch the

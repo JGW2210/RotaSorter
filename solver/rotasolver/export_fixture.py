@@ -159,9 +159,10 @@ def cases() -> dict[str, Problem]:
     from datetime import date
 
     # A valid pin the solver would not have chosen unprompted: Rakesh Menon is
-    # a trainer on Urines and free that Monday, but the unpinned rota puts him
-    # on CAT-3. Pinning an impossible slot instead would only test that both
-    # solvers ignore it.
+    # a trainer on Urines and free that Monday, and the unpinned rota puts him
+    # on one of the benches with a shallower pool instead. Which one varies
+    # between equally optimal rotas, so it is not named here. Pinning an
+    # impossible slot would only test that both solvers ignore it.
     pinned = replace(
         base,
         pins=[
