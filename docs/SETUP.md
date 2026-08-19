@@ -143,6 +143,18 @@ stops, which is the confirmation you want.
 
 To solve a week directly, put `2026-09-14` in the **week** input.
 
+### A note on Actions minutes
+
+The fallback schedule wakes every fifteen minutes. It asks Supabase whether
+anything is queued before installing anything, so a wake with no work costs a
+few seconds rather than the minute it takes to build OR-Tools — roughly 100
+billed minutes a month rather than 4,000.
+
+Public repositories get unlimited Actions minutes and this does not matter. On
+a private repository, once `dispatch-solve` is deployed in step 7 the schedule
+is only insurance, and you can drop the `schedule:` block from
+`.github/workflows/solve.yml` if you would rather not spend anything on it.
+
 ## 7. Deploy the dispatch function
 
 This is what lets the **Generate rota** button start a solve straight away

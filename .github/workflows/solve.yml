@@ -4,8 +4,13 @@ name: Solve rota
 #   repository_dispatch  the UI asked for a solve, via the dispatch-solve
 #                        Supabase Edge Function. This is the normal path.
 #   workflow_dispatch    you want to solve a run by hand from the Actions tab.
-#   schedule             fallback. If a dispatch was lost or the Edge Function
+#   schedule             fallback. If a dispatch was lost, or the Edge Function
 #                        is not deployed yet, queued runs still get collected.
+#
+# The scheduled path checks for queued work with a single request before
+# installing anything, so a no-op wake costs a few seconds of runner time rather
+# than a minute of building OR-Tools. That matters: at this cadence an
+# unguarded workflow would spend around 4,000 minutes a month doing nothing.
 
 on:
   repository_dispatch:
@@ -19,7 +24,7 @@ on:
         description: "Or a week start (YYYY-MM-DD) to queue and solve."
         required: false
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/15 * * * *"
 
 concurrency:
   group: solve-rota
@@ -30,19 +35,62 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Is there anything to do?
+        id: check
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RUN_ID: ${{ github.event.client_payload.run_id || inputs.run_id }}
+          WEEK: ${{ inputs.week }}
+        run: |
+          set -euo pipefail
+          if [ -n "$RUN_ID" ] || [ -n "$WEEK" ]; then
+            echo "work=yes" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "${SUPABASE_URL:-}" ]; then
+            echo "::warning::SUPABASE_URL is not set. See docs/SETUP.md step 6."
+            echo "work=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Ask for one queued id. No Range header and no --fail: PostgREST
+          # answers an empty range with 416, and "nothing queued" is the
+          # common case, so that would fail the workflow every quarter hour.
+          body=$(curl -sS \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            "${SUPABASE_URL}/rest/v1/rota_run?status=eq.queued&select=id&limit=1" || echo "")
+
+          if [ "$body" = "[]" ]; then
+            echo "Nothing queued."
+            echo "work=no" >> "$GITHUB_OUTPUT"
+          elif [ -z "$body" ]; then
+            # Could not reach Supabase. Carry on rather than silently dropping
+            # a run; the solver will report the real error against it.
+            echo "::warning::Could not reach Supabase to check the queue. Proceeding."
+            echo "work=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "Queued work found."
+            echo "work=yes" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.check.outputs.work == 'yes'
 
       - uses: actions/setup-python@v5
+        if: steps.check.outputs.work == 'yes'
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: solver/pyproject.toml
 
       - name: Install solver
+        if: steps.check.outputs.work == 'yes'
         working-directory: solver
         run: pip install -e .
 
       - name: Solve
+        if: steps.check.outputs.work == 'yes'
         working-directory: solver
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
