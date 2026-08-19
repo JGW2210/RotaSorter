@@ -1,0 +1,28 @@
+# Node
+node_modules/
+dist/
+*.local
+.vite/
+
+# Env — never commit real keys
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Solver scratch output
+solver/out/
