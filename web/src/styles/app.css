@@ -282,6 +282,11 @@
   font-size: var(--text-sm);
 }
 
+.toolbar__search { width: 180px; }
+
+/* The New rule button keeps the right edge whatever else the toolbar holds. */
+.toolbar > .btn--primary { margin-left: auto; }
+
 .field {
   display: grid;
   gap: var(--space-2);
@@ -497,6 +502,38 @@ textarea {
 }
 
 .pattern__off { color: var(--ink-faint); padding: 0 3px; }
+
+/* The same glyphs as buttons, where the pattern is editable. */
+button.pattern__on,
+button.pattern__off {
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 2px;
+}
+button.pattern__on { background: var(--accent-soft); font-weight: 600; }
+button.pattern__on:hover,
+button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1px; }
+
+.pattern-row { display: flex; align-items: center; gap: var(--space-3); }
+.pattern-row__shift {
+  min-width: 60px;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.absence-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.absence-row .btn { margin-left: auto; }
+
+.absence-form {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: var(--space-4);
+}
+.absence-form__notes { flex: 1; min-width: 120px; }
 
 .doclist {
   list-style: none;
@@ -1078,6 +1115,63 @@ textarea {
 .builder__impact dt { color: var(--ink-muted); font-size: var(--text-sm); }
 .builder__impact dd { margin: 0; }
 .builder__save { display: flex; gap: var(--space-3); justify-content: flex-end; }
+
+.builder__todo {
+  margin: 0;
+  color: var(--signal-caution);
+  font-size: var(--text-sm);
+}
+
+/* A value box the rule cannot use yet. */
+.is-unfilled { outline: 1px solid var(--signal-caution-line); outline-offset: 1px; }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+  padding: 2px;
+  border-radius: var(--radius);
+}
+
+.chips__chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--ink-muted);
+  padding: 1px 10px;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.chips__chip:hover { border-color: var(--accent); color: var(--ink); }
+
+.chips__chip.is-on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.builder__dryrun {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.dryrun { display: grid; gap: var(--space-2); font-size: var(--text-sm); }
+.dryrun p { margin: 0; }
+.dryrun__bad { color: var(--signal-alert); }
+.dryrun__breaches {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: grid;
+  gap: var(--space-1);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
 
 /* --------------------------------------------------------- login/setup -- */
 

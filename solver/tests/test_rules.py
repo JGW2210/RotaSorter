@@ -11,6 +11,7 @@ from rotasolver.models import (
     Availability,
     Bench,
     Competency,
+    PastAssignment,
     Problem,
     Requirement,
     Rule,
@@ -260,7 +261,7 @@ MON = date(2026, 9, 14)
 
 
 def tiny(staff_codes, bench_names, *, min_staff=1, max_staff=1,
-         rules=(), absences=()) -> Problem:
+         rules=(), absences=(), history=()) -> Problem:
     """One DAY shift, every person competent on every bench, Mon-Fri cover."""
     staff = [Staff(id=c, code=c, full_name=c, grade="bms") for c in staff_codes]
     return Problem(
@@ -284,6 +285,7 @@ def tiny(staff_codes, bench_names, *, min_staff=1, max_staff=1,
         ],
         absences=list(absences),
         rules=list(rules),
+        history=list(history),
     )
 
 
@@ -306,6 +308,32 @@ def test_max_consecutive_days_forces_alternation():
         days = sorted(a.work_date for a in solution.assignments if a.staff_id == person)
         for d1, d2 in zip(days, days[1:]):
             assert (d2 - d1).days > 1, f"{person} works X on {d1} and {d2}"
+
+
+def test_max_consecutive_days_counts_last_weeks_published_rota():
+    """A worked X on the Sunday, so the Monday must go to B."""
+    problem = tiny(
+        ["A", "B"], ["X"],
+        rules=[rule("max_consecutive_days", params={"n": 1, "same_bench": True})],
+        history=[PastAssignment(staff_id="A", work_date=MON - timedelta(days=1),
+                                shift_id="DAY", bench_id="X")],
+    )
+    solution = solve(problem)
+    assert solution.status == "solved", solution.log
+    monday = next(a for a in solution.assignments if a.work_date == MON)
+    assert monday.staff_id == "B"
+    assert "look back" in solution.log
+
+
+def test_history_is_ignored_without_a_consecutive_rule():
+    problem = tiny(
+        ["A"], ["X"],
+        history=[PastAssignment(staff_id="A", work_date=MON - timedelta(days=1),
+                                shift_id="DAY", bench_id="X")],
+    )
+    solution = solve(problem)
+    assert solution.status == "solved"
+    assert len(solution.assignments) == 5
 
 
 def test_max_consecutive_days_hard_is_infeasible_when_one_person_must_repeat():

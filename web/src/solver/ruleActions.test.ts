@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import { solveWeek } from "./solve";
 import {
   DEFAULT_SETTINGS,
+  type PastAssignment,
   type SolverAbsence,
   type SolverProblem,
   type SolverRule,
@@ -33,6 +34,7 @@ function tiny(
     maxStaff?: number;
     rules?: SolverRule[];
     absences?: SolverAbsence[];
+    history?: PastAssignment[];
   } = {},
 ): SolverProblem {
   return {
@@ -75,6 +77,7 @@ function tiny(
     ),
     rules: opts.rules ?? [],
     pins: [],
+    history: opts.history ?? [],
     settings: DEFAULT_SETTINGS,
   };
 }
@@ -127,6 +130,22 @@ describe("max_consecutive_days", () => {
         expect(gap, `${person} works X on ${days[i - 1]} and ${days[i]}`).toBeGreaterThan(1);
       }
     }
+  });
+
+  it("counts last week's published rota across the boundary", async () => {
+    // A worked X on the Sunday, so the Monday must go to B.
+    const result = await solveWeek(
+      tiny(["A", "B"], ["X"], {
+        rules: [rule("max_consecutive_days", { params: { n: 1, same_bench: true } })],
+        history: [
+          { staffId: "A", workDate: datePlus(-1), shiftId: "DAY", benchId: "X" },
+        ],
+      }),
+    );
+    expect(result.status, result.log).toBe("solved");
+    const monday = result.assignments.find((a) => a.workDate === MON);
+    expect(monday?.staffId).toBe("B");
+    expect(result.log).toContain("look back");
   });
 
   it("is infeasible when the only person must repeat", async () => {

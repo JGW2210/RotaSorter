@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "./supabase";
+import { addWeeks } from "./week";
 import type {
   Absence,
   Assignment,
@@ -222,6 +223,29 @@ export const usePins = (weekStart: string) =>
         .eq("week_start", weekStart);
       if (error) throw new Error(error.message);
       return (data ?? []) as Pin[];
+    },
+  });
+
+/** Last week's published assignments, so rules that count runs of days can
+ *  see across the Sunday-to-Monday boundary. Empty when nothing is published. */
+export const usePriorWeekHistory = (weekStart: string) =>
+  useQuery({
+    queryKey: ["prior_week_history", weekStart],
+    queryFn: async () => {
+      const prior = addWeeks(weekStart, -1);
+      const { data: week, error } = await supabase
+        .from("rota_week")
+        .select("published_run_id")
+        .eq("week_start", prior)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!week?.published_run_id) return [] as Assignment[];
+      const { data, error: assignmentError } = await supabase
+        .from("assignment")
+        .select("*")
+        .eq("run_id", week.published_run_id);
+      if (assignmentError) throw new Error(assignmentError.message);
+      return (data ?? []) as Assignment[];
     },
   });
 

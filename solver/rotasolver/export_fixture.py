@@ -22,7 +22,7 @@ from .solve import solve
 
 def problem_to_json(problem: Problem) -> dict[str, Any]:
     """camelCase, to match the TypeScript SolverProblem exactly."""
-    return {
+    data: dict[str, Any] = {
         "weekStart": problem.week_start.isoformat(),
         "shifts": [
             {"id": s.id, "code": s.code, "name": s.name} for s in problem.shifts
@@ -107,6 +107,19 @@ def problem_to_json(problem: Problem) -> dict[str, Any]:
         ],
         "settings": dict(problem.settings),
     }
+    # Optional on both sides; omitted rather than written empty, so the
+    # fixtures that predate it do not change by a key.
+    if problem.history:
+        data["history"] = [
+            {
+                "staffId": h.staff_id,
+                "workDate": h.work_date.isoformat(),
+                "shiftId": h.shift_id,
+                "benchId": h.bench_id,
+            }
+            for h in problem.history
+        ]
+    return data
 
 
 def solution_to_json(problem: Problem) -> dict[str, Any]:
@@ -170,11 +183,40 @@ def cases() -> dict[str, Problem]:
         ],
     )
 
+    # A consecutive-day rule whose run starts in last week's published rota:
+    # Marcus worked Urines on the Sunday, so this Monday it is off limits to
+    # him, and both solvers must count the boundary the same way. One named
+    # person and a hard rule keep the optimum deterministic.
+    from .models import PastAssignment, Rule
+
+    boundary = replace(
+        base,
+        rules=list(base.rules) + [
+            Rule(
+                id="no-repeat-marcus",
+                name="Marcus never repeats a bench",
+                action="max_consecutive_days",
+                params={"n": 1, "same_bench": True},
+                conditions={"op": "all", "children": [
+                    {"subject": "person", "operator": "is", "values": ["BMS-0141"]},
+                ]},
+                is_hard=True,
+                weight=100,
+                plain_english="Marcus Kell cannot work the same bench two days in a row.",
+            )
+        ],
+        history=[
+            PastAssignment(staff_id="BMS-0141", work_date=date(2026, 9, 13),
+                           shift_id="DAY", bench_id="Urines"),
+        ],
+    )
+
     return {
         "seeded-week": base,
         "no-rules": bare,
         "with-pins": pinned,
         "infeasible-hard-rule": activated,
+        "consecutive-with-history": boundary,
     }
 
 

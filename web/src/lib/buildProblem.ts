@@ -8,6 +8,7 @@
 import { DEFAULT_SETTINGS, type SolverProblem, type SolverSettings } from "../solver";
 import type {
   Absence,
+  Assignment,
   Availability,
   Bench,
   BenchShiftRequirement,
@@ -30,6 +31,8 @@ export interface ProblemInputs {
   absences: Absence[];
   rules: Rule[];
   pins: Pin[];
+  /** Last week's published assignments, for rules that look across weeks. */
+  history?: Assignment[];
   settings: SolverSetting[];
 }
 
@@ -117,6 +120,14 @@ export function buildProblem(input: ProblemInputs): SolverProblem {
         shiftId: p.shift_id,
         benchId: p.bench_id,
         staffId: p.staff_id,
+      })),
+    history: (input.history ?? [])
+      .filter((a) => staffIds.has(a.staff_id) && benchIds.has(a.bench_id))
+      .map((a) => ({
+        staffId: a.staff_id,
+        workDate: a.work_date,
+        shiftId: a.shift_id,
+        benchId: a.bench_id,
       })),
     settings,
   };

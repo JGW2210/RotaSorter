@@ -11,7 +11,7 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Callable
 
 from ortools.sat.python import cp_model
@@ -228,6 +228,14 @@ class RotaModel:
     # -- rules --------------------------------------------------------------
 
     def _apply_rules(self) -> None:
+        if self.p.history and any(
+            r.action == "max_consecutive_days" and r.status == "active"
+            for r in self.p.rules
+        ):
+            self.notes.append(
+                f"Consecutive-day rules look back at {len(self.p.history)} "
+                "assignments from last week's published rota."
+            )
         for rule in self.p.rules:
             if rule.status != "active":
                 continue
@@ -444,37 +452,64 @@ class RotaModel:
             key = (slot.staff_id, slot.bench_id) if same_bench else (slot.staff_id,)
             grouped[key][slot.work_date].append(slot)
 
-        # problem.dates is the week in order, so every slice is a run of
-        # calendar-consecutive days. A day with no matching slot contributes
-        # nothing, which is right: a day you cannot work breaks the run.
-        dates = self.p.dates
+        # What each group already worked at the end of last week's published
+        # rota. Only the n days butting up against this Monday can extend a
+        # run into this week; the rest of the history cannot matter.
+        week_start = self.p.dates[0]
+        history_dates = [week_start - timedelta(days=n - i) for i in range(n)]
+        history_set = set(history_dates)
+        staff_ids = {s.id for s in self.p.staff}
+        bench_ids = {b.id for b in self.p.benches}
+        worked_before: dict[tuple, set[date]] = defaultdict(set)
+        for past in self.p.history:
+            if past.work_date not in history_set:
+                continue
+            if past.staff_id not in staff_ids or past.bench_id not in bench_ids:
+                continue
+            past_slot = Slot(past.staff_id, past.work_date, past.shift_id,
+                             past.bench_id)
+            if not matches(self.p, rule.conditions, past_slot):
+                continue
+            key = (past.staff_id, past.bench_id) if same_bench else (past.staff_id,)
+            worked_before[key].add(past.work_date)
+
+        # The dates are in order, so every slice is a run of calendar-
+        # consecutive days. A day with no matching slot contributes nothing,
+        # which is right: a day you cannot work breaks the run. History days
+        # are constants, folded into the right hand side.
+        dates = history_dates + self.p.dates
         for key, by_date in grouped.items():
             staff_id = key[0]
             bench_id = key[1] if same_bench else None
+            worked = worked_before.get(key, set())
             for start in range(len(dates) - n):
                 window = dates[start : start + n + 1]
-                if sum(1 for d in window if d in by_date) <= n:
+                already = sum(1 for d in window if d in worked)
+                if already + sum(1 for d in window if d in by_date) <= n:
                     continue
                 counting = [s for d in window for s in by_date.get(d, [])]
+                if not counting:
+                    continue
                 # One bench per day keeps each day's sum at 0 or 1, so this is
                 # exactly "at most n of these n+1 consecutive days".
                 total = sum(self.x[s] for s in counting)
                 if rule.is_hard:
-                    self.model.Add(total <= n)
+                    self.model.Add(total <= n - already)
                     continue
                 over = self.model.NewIntVar(
                     0, 1, f"run[{rule.id[:8]},{staff_id[:8]},{window[0]}]"
                 )
-                self.model.Add(over >= total - n)
+                self.model.Add(over >= total - (n - already))
                 who = self.p.person(staff_id).full_name
                 doing = f"is on {self.p.bench(bench_id).name}" if same_bench else "works"
                 plural = "" if n == 1 else "s"
+                breach_date = next((d for d in window if d in by_date), window[0])
                 self.soft.append(
                     SoftTerm(
                         over, rule.weight,
                         lambda _v, who=who, doing=doing, n=n, plural=plural:
                             f"{who} {doing} more than {n} day{plural} in a row",
-                        rule=rule, work_date=window[0], staff_id=staff_id,
+                        rule=rule, work_date=breach_date, staff_id=staff_id,
                         bench_id=bench_id,
                     )
                 )

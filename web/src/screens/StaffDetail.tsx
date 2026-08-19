@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { ErrorNote, Loading, Panel, Tag } from "../components/Bits";
 import { ABSENCE_LABELS, GRADE_LABELS, MATRIX_GLYPHS, MATRIX_LABELS } from "../lib/format";
 import {
@@ -9,21 +10,37 @@ import {
   useCompetencyDocuments,
   useCompetencyMatrix,
   useRecentAssignments,
+  useShifts,
   useStaff,
   useStaffDocuments,
 } from "../lib/queries";
+import { supabase } from "../lib/supabase";
+import type { AbsenceKind } from "../lib/types";
 import { WEEKDAY_SHORT, formatDate } from "../lib/week";
+
+const BLANK_ABSENCE = {
+  starts_on: "",
+  ends_on: "",
+  kind: "annual_leave" as AbsenceKind,
+  notes: "",
+};
 
 export default function StaffDetail() {
   const { staffId } = useParams();
+  const queryClient = useQueryClient();
   const staff = useStaff();
   const benches = useBenches();
+  const shifts = useShifts();
   const matrix = useCompetencyMatrix();
   const availability = useAvailability();
   const absences = useAbsences();
   const documents = useCompetencyDocuments();
   const staffDocuments = useStaffDocuments(staffId);
   const recent = useRecentAssignments(staffId);
+
+  const [patternError, setPatternError] = useState<string | null>(null);
+  const [absenceDraft, setAbsenceDraft] = useState(BLANK_ABSENCE);
+  const [absenceError, setAbsenceError] = useState<string | null>(null);
 
   const person = staff.data?.find((s) => s.id === staffId);
   const benchById = useMemo(
@@ -40,12 +57,63 @@ export default function StaffDetail() {
   if (!person) return <ErrorNote error={new Error("No such member of staff.")} />;
 
   const cells = (matrix.data ?? []).filter((c) => c.staff_id === person.id);
-  const worked = new Set(
+  const availableOn = new Map(
     (availability.data ?? [])
-      .filter((a) => a.staff_id === person.id && a.is_available)
-      .map((a) => a.weekday),
+      .filter((a) => a.staff_id === person.id)
+      .map((a) => [`${a.weekday}|${a.shift_id}`, a.is_available]),
   );
   const away = (absences.data ?? []).filter((a) => a.staff_id === person.id);
+
+  async function toggleContracted(shiftId: string, weekday: number, on: boolean) {
+    setPatternError(null);
+    const { error } = await supabase.from("availability").upsert(
+      { staff_id: person!.id, weekday, shift_id: shiftId, is_available: on },
+      { onConflict: "staff_id,weekday,shift_id" },
+    );
+    if (error) {
+      setPatternError(error.message);
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["availability"] });
+  }
+
+  async function addAbsence() {
+    if (!absenceDraft.starts_on) {
+      setAbsenceError("An absence needs at least a start date.");
+      return;
+    }
+    setAbsenceError(null);
+    const ends = absenceDraft.ends_on || absenceDraft.starts_on;
+    if (ends < absenceDraft.starts_on) {
+      setAbsenceError("An absence cannot end before it starts.");
+      return;
+    }
+    const { error } = await supabase.from("absence").insert({
+      staff_id: person!.id,
+      starts_on: absenceDraft.starts_on,
+      ends_on: ends,
+      kind: absenceDraft.kind,
+      notes: absenceDraft.notes || null,
+    });
+    if (error) {
+      setAbsenceError(error.message);
+      return;
+    }
+    setAbsenceDraft(BLANK_ABSENCE);
+    await queryClient.invalidateQueries({ queryKey: ["absence"] });
+  }
+
+  async function removeAbsence(id: string) {
+    setAbsenceError(null);
+    const { error } = await supabase.from("absence").delete().eq("id", id);
+    if (error) {
+      setAbsenceError(error.message);
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["absence"] });
+  }
+
+  const shiftList = shifts.data ?? [];
 
   return (
     <div className="detail">
@@ -65,16 +133,37 @@ export default function StaffDetail() {
 
       <div className="detail__cols">
         <Panel title="Contracted pattern">
-          <div className="pattern pattern--large">
-            {WEEKDAY_SHORT.map((label, index) => (
-              <span
-                key={label}
-                className={worked.has(index + 1) ? "pattern__on" : "pattern__off"}
-              >
-                {label}
-              </span>
+          <div className="stack">
+            {shiftList.map((shift) => (
+              <div key={shift.id} className="pattern-row">
+                {shiftList.length > 1 && (
+                  <span className="pattern-row__shift">{shift.name}</span>
+                )}
+                <div className="pattern pattern--large">
+                  {WEEKDAY_SHORT.map((label, index) => {
+                    const on = availableOn.get(`${index + 1}|${shift.id}`) ?? false;
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        className={on ? "pattern__on" : "pattern__off"}
+                        aria-pressed={on}
+                        title={`${on ? "Contracted" : "Not contracted"} on the ${shift.name} shift. Click to change.`}
+                        onClick={() => void toggleContracted(shift.id, index + 1, !on)}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
+          <p className="muted">
+            Click a day to change it. The solver only places people on their
+            contracted days.
+          </p>
+          {patternError && <p className="login__error">{patternError}</p>}
         </Panel>
 
         <Panel title="Absences">
@@ -83,17 +172,68 @@ export default function StaffDetail() {
           ) : (
             <ul className="stack">
               {away.map((a) => (
-                <li key={a.id}>
+                <li key={a.id} className="absence-row">
                   <Tag tone={a.kind === "sick" ? "alert" : "neutral"}>
                     {ABSENCE_LABELS[a.kind] ?? a.kind}
                   </Tag>{" "}
                   {formatDate(a.starts_on)}
                   {a.ends_on !== a.starts_on && ` – ${formatDate(a.ends_on)}`}
                   {a.notes && <span className="muted"> · {a.notes}</span>}
+                  <button
+                    type="button"
+                    className="btn btn--quiet"
+                    onClick={() => void removeAbsence(a.id)}
+                    aria-label={`Remove this ${ABSENCE_LABELS[a.kind] ?? a.kind} absence`}
+                  >
+                    Remove
+                  </button>
                 </li>
               ))}
             </ul>
           )}
+          <div className="absence-form">
+            <select
+              value={absenceDraft.kind}
+              aria-label="Kind of absence"
+              onChange={(e) =>
+                setAbsenceDraft({ ...absenceDraft, kind: e.target.value as AbsenceKind })
+              }
+            >
+              {Object.entries(ABSENCE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={absenceDraft.starts_on}
+              aria-label="First day"
+              onChange={(e) => setAbsenceDraft({ ...absenceDraft, starts_on: e.target.value })}
+            />
+            <input
+              type="date"
+              value={absenceDraft.ends_on}
+              min={absenceDraft.starts_on || undefined}
+              aria-label="Last day"
+              onChange={(e) => setAbsenceDraft({ ...absenceDraft, ends_on: e.target.value })}
+            />
+            <input
+              type="text"
+              className="absence-form__notes"
+              placeholder="Notes (optional)"
+              value={absenceDraft.notes}
+              onChange={(e) => setAbsenceDraft({ ...absenceDraft, notes: e.target.value })}
+            />
+            <button type="button" className="btn" onClick={() => void addAbsence()}>
+              Add
+            </button>
+          </div>
+          <p className="muted">
+            One day off is just a start date. The solver never places anyone
+            inside an absence.
+          </p>
+          {absenceError && <p className="login__error">{absenceError}</p>}
         </Panel>
       </div>
 

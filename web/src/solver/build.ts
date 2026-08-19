@@ -11,7 +11,7 @@
  */
 
 import type { InfeasibleReport } from "../lib/types";
-import { WEEKDAY_NAMES, isoWeekday } from "../lib/week";
+import { WEEKDAY_NAMES, addDays, isoWeekday } from "../lib/week";
 import { MipModel, type Term } from "./model";
 import { ProblemIndex } from "./problem";
 import {
@@ -232,6 +232,16 @@ export function buildModel(problem: SolverProblem, options: BuildOptions = {}): 
     return out;
   };
 
+  if (
+    (problem.history ?? []).length &&
+    problem.rules.some((r) => r.action === "max_consecutive_days")
+  ) {
+    notes.push(
+      `Consecutive-day rules look back at ${problem.history!.length} assignments ` +
+        "from last week's published rota.",
+    );
+  }
+
   for (const original of problem.rules) {
     const rule: SolverRule =
       options.softenRules && original.isHard
@@ -436,29 +446,57 @@ export function buildModel(problem: SolverProblem, options: BuildOptions = {}): 
           groups.set(k, byDate);
         }
 
-        // index.dates is the week in order, so every slice is a run of
-        // calendar-consecutive days. A day with no matching slot contributes
-        // nothing, which is right: a day you cannot work breaks the run.
-        const dates = index.dates;
+        // What each group already worked at the end of last week's published
+        // rota. Only the n days butting up against this Monday can extend a
+        // run into this week; the rest of the history cannot matter.
+        const historyDates = Array.from({ length: n }, (_, i) =>
+          addDays(index.dates[0], i - n),
+        );
+        const historySet = new Set(historyDates);
+        const staffIds = new Set(problem.staff.map((s) => s.id));
+        const benchIds = new Set(problem.benches.map((b) => b.id));
+        const workedBefore = new Map<string, Set<string>>();
+        for (const past of problem.history ?? []) {
+          if (!historySet.has(past.workDate)) continue;
+          if (!staffIds.has(past.staffId) || !benchIds.has(past.benchId)) continue;
+          if (!matches(index, rule.conditions, past)) continue;
+          const k = sameBench ? `${past.staffId}|${past.benchId}` : past.staffId;
+          const set = workedBefore.get(k) ?? new Set<string>();
+          set.add(past.workDate);
+          workedBefore.set(k, set);
+        }
+
+        // The dates are in order, so every slice is a run of calendar-
+        // consecutive days. A day with no matching slot contributes nothing,
+        // which is right: a day you cannot work breaks the run. History days
+        // are constants, folded into the right hand side.
+        const dates = [...historyDates, ...index.dates];
         for (const [key, byDate] of groups) {
           const [staffId, benchId] = key.split("|");
+          const worked = workedBefore.get(key) ?? new Set<string>();
           for (let start = 0; start + n + 1 <= dates.length; start++) {
             const window = dates.slice(start, start + n + 1);
-            if (window.filter((d) => byDate.has(d)).length <= n) continue;
+            const already = window.filter((d) => worked.has(d)).length;
+            if (already + window.filter((d) => byDate.has(d)).length <= n) continue;
             const counting = window.flatMap((d) => byDate.get(d) ?? []);
+            if (!counting.length) continue;
             // One bench per day keeps each day's sum at 0 or 1, so this is
             // exactly "at most n of these n+1 consecutive days".
             const terms = MipModel.sum(vars(counting));
             if (rule.isHard) {
-              model.add(terms, "<=", n);
+              model.add(terms, "<=", n - already);
             } else {
               const over = model.addContinuous(0, 1);
-              model.add([...terms, { v: over, c: -1 }], "<=", n);
+              model.add([...terms, { v: over, c: -1 }], "<=", n - already);
               const who = index.staff(staffId).fullName;
               const doing = sameBench ? `is on ${index.bench(benchId).name}` : "works";
               addSoft(over, rule.weight,
                 () => `${who} ${doing} more than ${n} day${n === 1 ? "" : "s"} in a row`,
-                rule, { workDate: window[0], staffId, benchId: sameBench ? benchId : null });
+                rule, {
+                  workDate: window.find((d) => byDate.has(d)) ?? window[0],
+                  staffId,
+                  benchId: sameBench ? benchId : null,
+                });
             }
           }
         }

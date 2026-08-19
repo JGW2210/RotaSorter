@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Empty, ErrorNote, Loading, Tag, Toolbar } from "../components/Bits";
@@ -21,6 +21,8 @@ const ACTION_LABELS: Record<string, string> = {
   must_be_together: "Always together",
 };
 
+type StatusFilter = "all" | "active" | "paused" | "breached";
+
 export default function Rules() {
   const [params] = useSearchParams();
   const pauseId = params.get("pause");
@@ -30,6 +32,10 @@ export default function Rules() {
   const lastRun = runs.data?.[0];
   const breaches = useBreaches(lastRun?.id);
   const queryClient = useQueryClient();
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [typeFilter, setTypeFilter] = useState("");
 
   const nameByCode = useMemo(() => {
     const map = new Map((staff.data ?? []).map((s) => [s.staff_code, s.full_name]));
@@ -71,6 +77,24 @@ export default function Rules() {
     await queryClient.invalidateQueries({ queryKey: ["rule"] });
   }
 
+  /* The filters answer the questions people actually bring to this list:
+     "which rule says…", "what is paused", and "what bit us last run". */
+  const visible = (rules.data ?? []).filter((rule) => {
+    if (statusFilter === "active" && rule.status !== "active") return false;
+    if (statusFilter === "paused" && rule.status !== "paused") return false;
+    if (statusFilter === "breached" && !(breachCounts.get(rule.id) ?? 0)) return false;
+    if (typeFilter && rule.action !== typeFilter) return false;
+    if (search) {
+      const haystack =
+        `${rule.plain_english ?? ""} ${rule.name} ${rule.description ?? ""}`.toLowerCase();
+      if (!haystack.includes(search.toLowerCase())) return false;
+    }
+    return true;
+  });
+
+  const typesPresent = [...new Set((rules.data ?? []).map((r) => r.action))].sort();
+  const filtering = Boolean(search || typeFilter || statusFilter !== "all");
+
   if (rules.error) return <ErrorNote error={rules.error} />;
   if (rules.isLoading) return <Loading what="rules" />;
   if ((rules.data ?? []).length === 0) {
@@ -92,7 +116,49 @@ export default function Rules() {
   return (
     <>
       <Toolbar>
-        <span className="toolbar__count">{rules.data?.length} rules</span>
+        <span className="toolbar__count">
+          {filtering ? `${visible.length} of ${rules.data?.length}` : rules.data?.length} rules
+        </span>
+        <input
+          type="search"
+          className="toolbar__search"
+          placeholder="Search rules…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search rules"
+        />
+        <div className="segmented" role="group" aria-label="Status">
+          {(
+            [
+              ["all", "All"],
+              ["active", "Active"],
+              ["paused", "Paused"],
+              ["breached", "Breached last run"],
+            ] as [StatusFilter, string][]
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={statusFilter === value ? "is-active" : ""}
+              aria-pressed={statusFilter === value}
+              onClick={() => setStatusFilter(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          aria-label="Rule type"
+        >
+          <option value="">All types</option>
+          {typesPresent.map((action) => (
+            <option key={action} value={action}>
+              {ACTION_LABELS[action] ?? action}
+            </option>
+          ))}
+        </select>
         {lastRun && (
           <span className="muted">
             Breach counts from the run of {new Date(lastRun.requested_at).toLocaleString("en-GB")}
@@ -125,7 +191,14 @@ export default function Rules() {
             </tr>
           </thead>
           <tbody>
-            {(rules.data ?? []).map((rule) => (
+            {visible.length === 0 && (
+              <tr>
+                <td colSpan={7} className="muted">
+                  No rules match these filters.
+                </td>
+              </tr>
+            )}
+            {visible.map((rule) => (
               <tr key={rule.id} className={pauseId === rule.id ? "is-highlighted" : undefined}>
                 <td>
                   <Link to={`/rules/${rule.id}`} className="rule-sentence">

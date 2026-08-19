@@ -19,6 +19,7 @@ import {
   useBreaches,
   useCompetencyMatrix,
   usePins,
+  usePriorWeekHistory,
   usePublishedWeek,
   useRules,
   useShifts,
@@ -60,6 +61,7 @@ export default function RotaBoard() {
   const absences = useAbsences();
   const runs = useWeekRuns(weekStart);
   const pins = usePins(weekStart);
+  const priorHistory = usePriorWeekHistory(weekStart);
   const published = usePublishedWeek(weekStart);
   const rules = useRules();
   const solverSettings = useSolverSettings();
@@ -157,6 +159,7 @@ export default function RotaBoard() {
         absences: absences.data ?? [],
         rules: rules.data ?? [],
         pins: pins.data ?? [],
+        history: priorHistory.data ?? [],
         settings: solverSettings.data ?? [],
       });
 
@@ -192,7 +195,7 @@ export default function RotaBoard() {
   }, [
     weekStart, shifts.data, benches.data, requirements.data, staff.data,
     matrix.data, availability.data, absences.data, rules.data, pins.data,
-    solverSettings.data, queryClient,
+    priorHistory.data, solverSettings.data, queryClient,
   ]);
 
   const cancelSolve = useCallback(() => {

@@ -13,6 +13,42 @@ interface SnapshotRule {
   is_hard: boolean;
   weight: number;
   plain_english?: string | null;
+  action?: string;
+  params?: Record<string, unknown> | null;
+  conditions?: unknown;
+}
+
+/** How the rule set moved between two runs, in terms someone can act on.
+ *
+ * A snapshot holds only the rules that were applied, so a rule paused between
+ * runs shows up as "no longer applied" — which is exactly what it was.
+ */
+function diffSnapshots(previous: SnapshotRule[], current: SnapshotRule[]) {
+  const previousById = new Map(previous.map((r) => [r.id, r]));
+  const currentById = new Map(current.map((r) => [r.id, r]));
+
+  const added = current.filter((r) => !previousById.has(r.id));
+  const removed = previous.filter((r) => !currentById.has(r.id));
+  const changed = current.flatMap((rule) => {
+    const before = previousById.get(rule.id);
+    if (!before) return [];
+    const changes: string[] = [];
+    if (before.is_hard !== rule.is_hard) {
+      changes.push(rule.is_hard ? "made hard" : "made soft");
+    }
+    if (!rule.is_hard && before.weight !== rule.weight) {
+      changes.push(`weight ${before.weight} → ${rule.weight}`);
+    }
+    if (JSON.stringify(before.conditions ?? null) !== JSON.stringify(rule.conditions ?? null)) {
+      changes.push("conditions changed");
+    }
+    if (JSON.stringify(before.params ?? null) !== JSON.stringify(rule.params ?? null)) {
+      changes.push("parameters changed");
+    }
+    return changes.length ? [{ rule, changes }] : [];
+  });
+
+  return { added, removed, changed, any: added.length + removed.length + changed.length > 0 };
 }
 
 export default function RunDetail() {
@@ -38,6 +74,20 @@ export default function RunDetail() {
   if (!run) return <ErrorNote error={new Error("No such run.")} />;
 
   const snapshot = (run.rule_snapshot as SnapshotRule[] | null) ?? [];
+
+  // Runs come back newest first, so the run after this one in the list is the
+  // one generated immediately before it — whichever week it was for, because
+  // the rule library is shared by every week.
+  const ordered = runs.data ?? [];
+  const previousRun = ordered[ordered.findIndex((r) => r.id === run.id) + 1] ?? null;
+  const previousSnapshot = (previousRun?.rule_snapshot as SnapshotRule[] | null) ?? [];
+  const diff = previousRun ? diffSnapshots(previousSnapshot, snapshot) : null;
+
+  const breachCountByRule = new Map<string, number>();
+  for (const breach of breaches.data ?? []) {
+    if (!breach.rule_id) continue;
+    breachCountByRule.set(breach.rule_id, (breachCountByRule.get(breach.rule_id) ?? 0) + 1);
+  }
 
   return (
     <div className="detail">
@@ -109,17 +159,67 @@ export default function RunDetail() {
         </Panel>
       )}
 
+      {diff && (
+        <Panel
+          title="Rules changed since the previous run"
+          actions={
+            previousRun && (
+              <Link to={`/runs/${previousRun.id}`} className="muted">
+                vs the run of {formatDateTime(previousRun.requested_at)}
+              </Link>
+            )
+          }
+        >
+          {!diff.any ? (
+            <p className="muted">
+              The rule set is identical, so any difference in the rota came from
+              the data or the pins, not the rules.
+            </p>
+          ) : (
+            <ul className="stack">
+              {diff.added.map((rule) => (
+                <li key={`added-${rule.id}`}>
+                  <Tag tone="ok">Added</Tag> {rule.plain_english ?? rule.name}
+                </li>
+              ))}
+              {diff.removed.map((rule) => (
+                <li key={`removed-${rule.id}`}>
+                  <Tag tone="neutral">No longer applied</Tag>{" "}
+                  {rule.plain_english ?? rule.name}
+                  <span className="muted"> — paused or deleted</span>
+                </li>
+              ))}
+              {diff.changed.map(({ rule, changes }) => (
+                <li key={`changed-${rule.id}`}>
+                  <Tag tone="caution">Changed</Tag> {rule.plain_english ?? rule.name}
+                  <span className="muted"> — {changes.join(", ")}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      )}
+
       <Panel title={`Rule set at the time (${snapshot.length})`}>
         {snapshot.length === 0 ? (
           <p className="muted">No snapshot recorded.</p>
         ) : (
           <ul className="stack">
-            {snapshot.map((rule) => (
-              <li key={rule.id}>
-                {rule.is_hard ? <Tag tone="accent">Hard</Tag> : <Tag tone="caution">Soft {rule.weight}</Tag>}{" "}
-                {rule.plain_english ?? rule.name}
-              </li>
-            ))}
+            {snapshot.map((rule) => {
+              const count = breachCountByRule.get(rule.id) ?? 0;
+              return (
+                <li key={rule.id}>
+                  {rule.is_hard ? <Tag tone="accent">Hard</Tag> : <Tag tone="caution">Soft {rule.weight}</Tag>}{" "}
+                  {rule.plain_english ?? rule.name}
+                  {count > 0 && (
+                    <span className="muted">
+                      {" "}
+                      — breached {count === 1 ? "once" : `${count} times`} in this run
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </Panel>
