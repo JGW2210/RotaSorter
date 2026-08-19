@@ -131,19 +131,30 @@ Vite reads env only at startup, so restart `npm run dev` after editing
 
 **GitHub → Settings → Pages → Build and deployment → Source: GitHub Actions.**
 
-Then **Settings → Secrets and variables → Actions**, open the **Variables** tab
-(not Secrets) and add:
+Then **Settings → Secrets and variables → Actions**, open the **Variables** tab,
+and use **New repository variable** — the *Repository variables* section, not
+*Environment variables*:
 
 | Name | Value |
 |---|---|
 | `VITE_SUPABASE_URL` | the project URL |
 | `VITE_SUPABASE_ANON_KEY` | the anon / publishable key |
 
+Two distinctions that both bite silently:
+
+- **Not Secrets.** The Pages build has to read these to bake them into the
+  bundle, and secrets are hidden from it.
+- **Not Environment variables.** Those are only visible to a job that declares
+  that environment. In `deploy-web.yml` the `build` job declares none — only
+  `deploy` uses `github-pages` — so a variable scoped to that environment is
+  invisible exactly where it is needed.
+
+Get either wrong and the build would otherwise succeed with empty strings and
+deploy an app that shows the setup screen. The workflow checks first and fails
+with a message naming the cause, so you will not have to guess.
+
 Push to `main`, or run **Actions → Deploy web to GitHub Pages** by hand. The app
 lands at `https://<you>.github.io/<repo>/`.
-
-If the deployed page shows the setup screen, the values went in as Secrets
-rather than Variables. The Pages build cannot read secrets.
 
 ## 7. Run one end to end
 
@@ -215,8 +226,10 @@ python -m rotasolver.export_fixture ../web/src/solver/__fixtures__
 ## When something is wrong
 
 **The app shows "RotaSorter needs its Supabase keys".** No env vars at build
-time. Locally, check `web/.env.local` and restart the dev server. Deployed,
-check they are repository *variables*.
+time. Locally, check `web/.env.local` and restart the dev server. Deployed, the
+build should have failed before it got that far — check the *Deploy web to
+GitHub Pages* run for the error, and that the two values are **repository**
+variables rather than secrets or environment variables.
 
 **"relation ... does not exist".** The migrations have not been run, or only
 some of them.
