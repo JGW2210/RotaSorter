@@ -43,21 +43,3 @@ export const supabase: SupabaseClient = createClient(
     },
   },
 );
-
-/** Ask the Edge Function to start a solve on a GitHub runner. */
-export async function dispatchSolve(runId: string, weekStart: string) {
-  const { data, error } = await supabase.functions.invoke("dispatch-solve", {
-    body: { run_id: runId, week_start: weekStart },
-  });
-  if (error) {
-    // Not fatal: the run stays queued and the scheduled worker collects it.
-    return {
-      dispatched: false,
-      note:
-        "Could not reach the dispatch-solve function. The run is queued and the " +
-        "scheduled worker will pick it up within ten minutes.",
-      error: error.message,
-    };
-  }
-  return data as { dispatched: boolean; note?: string; error?: string };
-}

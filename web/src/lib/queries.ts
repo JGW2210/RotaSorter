@@ -1,7 +1,6 @@
 /** React Query hooks over the Supabase tables. */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { supabase } from "./supabase";
 import type {
   Absence,
@@ -307,26 +306,4 @@ export function useClearCompetency() {
       client.invalidateQueries({ queryKey: ["v_staff_competency_summary"] });
     },
   });
-}
-
-/** Live run status, so the board moves queued -> solving -> solved on its own. */
-export function useRunRealtime(weekStart: string) {
-  const client = useQueryClient();
-  useEffect(() => {
-    const channel = supabase
-      .channel(`runs-${weekStart}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "rota_run", filter: `week_start=eq.${weekStart}` },
-        () => {
-          client.invalidateQueries({ queryKey: ["rota_run"] });
-          client.invalidateQueries({ queryKey: ["assignment"] });
-          client.invalidateQueries({ queryKey: ["rule_breach"] });
-        },
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [client, weekStart]);
 }

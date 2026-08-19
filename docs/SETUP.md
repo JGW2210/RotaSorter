@@ -1,36 +1,33 @@
 # Setting RotaSorter up
 
-Start to finish, about half an hour. Nothing here needs a paid plan.
+Start to finish, about twenty minutes. Nothing here needs a paid plan, a server,
+or any account beyond Supabase and GitHub.
 
-There are **six** credentials in this system and they live in **three different
-places**. Putting one in the wrong place is the only way to do real damage, so
-that table comes first.
+## Where the keys go
 
-## Where every key goes
+There are **two** credentials, they are the same two, and both are safe in a
+browser:
 
-| Credential | Goes in | Public? | Used by |
-|---|---|---|---|
-| `VITE_SUPABASE_URL` | `web/.env.local`, and a GitHub repo **variable** | Yes | The browser app |
-| `VITE_SUPABASE_ANON_KEY` | `web/.env.local`, and a GitHub repo **variable** | Yes | The browser app |
-| `SUPABASE_URL` | GitHub Actions **secret** | — | The solver worker |
-| `SUPABASE_SERVICE_ROLE_KEY` | GitHub Actions **secret** | **No, never** | The solver worker |
-| `GITHUB_TOKEN` | Supabase **Edge Function secret** | **No, never** | The dispatch function |
-| `GITHUB_REPO` | Supabase **Edge Function secret** | — | The dispatch function |
+| Credential | Goes in | Used by |
+|---|---|---|
+| `VITE_SUPABASE_URL` | `web/.env.local`, and a GitHub repo **variable** | The app |
+| `VITE_SUPABASE_ANON_KEY` | `web/.env.local`, and a GitHub repo **variable** | The app |
 
-Two rules that matter:
+The anon key is meant to be public. It ships in the JavaScript bundle by design,
+and it grants exactly what the row level security policies allow — every policy
+in `0002_rls.sql` requires a signed-in session.
 
-- **The service role key must never reach the browser.** It bypasses every row
-  level security policy in the database. It belongs in GitHub Actions secrets
-  and nowhere else. The app checks the key it was given at startup and refuses
-  to run if it is a service role key, but do not rely on that.
-- **The anon key is meant to be public.** It is in the JavaScript bundle by
-  design. It grants exactly what the RLS policies allow, and every policy in
-  `0002_rls.sql` requires a signed-in session. Do not put it in Actions
-  *secrets*: the Pages build cannot read secrets, so use repository
-  **variables**.
+**The service role key is not used anywhere in this project.** It bypasses every
+RLS policy. Nothing needs it: the solver runs in the browser under the signed-in
+user's own permissions. If you find yourself pasting it somewhere, stop. The app
+checks the key it is given at startup and refuses to run if it is a service role
+key.
 
-Supabase renamed these keys in 2025. On a new project, **anon** is now called
-**publishable** and **service_role** is now called **secret**. Same things.
+Do not put these in Actions **secrets**: the Pages build cannot read secrets, so
+they go in repository **variables**.
+
+> Supabase renamed these in 2025. On a new project, **anon** is called
+> **publishable**. Same thing.
 
 ---
 
@@ -42,16 +39,17 @@ Supabase renamed these keys in 2025. On a new project, **anon** is now called
 
 ## 2. Run the migrations
 
-Paste each file's contents into the SQL Editor and run them **in order**. Each
-one should finish with "Success. No rows returned".
+Paste each file into the SQL Editor and run them **in order**. Each should
+finish with "Success. No rows returned".
 
 ```
-supabase/migrations/0001_schema.sql     tables, enums, indexes
-supabase/migrations/0002_rls.sql        row level security on every table
-supabase/migrations/0003_functions.sql  views, triggers and the RPCs
+supabase/migrations/0001_schema.sql        tables, enums, indexes
+supabase/migrations/0002_rls.sql           row level security on every table
+supabase/migrations/0003_functions.sql     views, triggers and the RPCs
+supabase/migrations/0004_client_solver.sql drops the two worker RPCs
 ```
 
-If you have the Supabase CLI linked to the project you can do all three with:
+With the Supabase CLI linked to the project, all four at once:
 
 ```bash
 supabase db push
@@ -68,8 +66,8 @@ supabase/seed/0030_competencies.sql     the competency matrix and document sign-
 supabase/seed/0040_rules_settings.sql   8 rules and the solver weights
 ```
 
-`0010` begins with a `truncate`, so running the four again resets the
-operational data to a clean state. It does not touch `auth.users`.
+`0010` begins with a `truncate`, so re-running the four resets the operational
+data to a clean state. It does not touch `auth.users`.
 
 To change the dummy data, edit `supabase/seed/generate_seed.py` and re-run it —
 the `.sql` files are generated, and CI fails if they drift from the generator.
@@ -95,7 +93,7 @@ Set an email and password, and tick **Auto Confirm User**. A `profile` row is
 created automatically by the trigger in `0003_functions.sql`, with the role
 `manager`.
 
-## 5. Point the web app at the project
+## 5. Point the app at the project
 
 Get both values from **Project Settings → API**:
 
@@ -116,106 +114,52 @@ npm run dev
 ```
 
 Sign in at <http://localhost:5173>. Move the week selector to **14 Sep 2026**,
-which is the week the seed data is built around.
+the week the seed data is built around, and press **Generate rota**. It solves
+in about two seconds, in the tab you are looking at.
 
 Vite reads env only at startup, so restart `npm run dev` after editing
 `.env.local`.
 
-## 6. Give the solver worker its keys
-
-**GitHub → your repo → Settings → Secrets and variables → Actions**
-
-On the **Secrets** tab, add:
-
-| Name | Value |
-|---|---|
-| `SUPABASE_URL` | the same project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API → **service_role / secret** key |
-
-The worker uses the service role key deliberately: it writes assignments on
-behalf of whoever asked for the rota, and it has no session of its own.
-
-Now try it without any of the rest wired up:
-
-**Actions → Solve rota → Run workflow**, leave the inputs empty, and it will
-claim the oldest queued run. With nothing queued it prints "Nothing queued" and
-stops, which is the confirmation you want.
-
-To solve a week directly, put `2026-09-14` in the **week** input.
-
-### A note on Actions minutes
-
-The fallback schedule wakes every fifteen minutes. It asks Supabase whether
-anything is queued before installing anything, so a wake with no work costs a
-few seconds rather than the minute it takes to build OR-Tools — roughly 100
-billed minutes a month rather than 4,000.
-
-Public repositories get unlimited Actions minutes and this does not matter. On
-a private repository, once `dispatch-solve` is deployed in step 7 the schedule
-is only insurance, and you can drop the `schedule:` block from
-`.github/workflows/solve.yml` if you would rather not spend anything on it.
-
-## 7. Deploy the dispatch function
-
-This is what lets the **Generate rota** button start a solve straight away
-rather than waiting for the cron. Skip it and everything still works, just up
-to ten minutes slower.
-
-Create a **fine-grained personal access token** at
-<https://github.com/settings/personal-access-tokens>:
-
-- Repository access: only this repository
-- Permissions: **Actions: read and write**, and **Contents: read**
-- Expiry: whatever your policy allows
-
-Then, with the [Supabase CLI](https://supabase.com/docs/guides/cli):
-
-```bash
-supabase login
-supabase link --project-ref YOUR-PROJECT-REF
-supabase secrets set GITHUB_TOKEN=github_pat_... GITHUB_REPO=jgw2210/rotasorter
-supabase functions deploy dispatch-solve
-```
-
-The token stays server-side in the function. The browser calls the function,
-the function calls GitHub.
-
-## 8. Publish the web app
+## 6. Publish the app
 
 **GitHub → Settings → Pages → Build and deployment → Source: GitHub Actions.**
 
-Then, back on **Settings → Secrets and variables → Actions**, open the
-**Variables** tab (not Secrets) and add:
+Then **Settings → Secrets and variables → Actions**, open the **Variables** tab
+(not Secrets) and add:
 
 | Name | Value |
 |---|---|
 | `VITE_SUPABASE_URL` | the project URL |
 | `VITE_SUPABASE_ANON_KEY` | the anon / publishable key |
 
-Push to `main`, or run **Actions → Deploy web to GitHub Pages** by hand. The
-app lands at `https://<you>.github.io/<repo>/`.
+Push to `main`, or run **Actions → Deploy web to GitHub Pages** by hand. The app
+lands at `https://<you>.github.io/<repo>/`.
 
-If the deployed page shows the setup screen, the variables went in as Secrets
+If the deployed page shows the setup screen, the values went in as Secrets
 rather than Variables. The Pages build cannot read secrets.
 
-## 9. Run one end to end
+## 7. Run one end to end
 
 1. Open the app, go to **Rota**, set the week to **14 Sep 2026**.
-2. **Generate rota**. The strip reads *Queued*, then *Solving*, then
-   *Solved in 0.8s. All coverage met.*
+2. **Generate rota**. The strip shows an elapsed counter, then
+   *Solved in 1.7s. All coverage met.*
 3. Drag a chip onto another bench. It becomes a pin, the button changes to
    **Re-solve around 1 pin**, and Cmd+Z undoes it.
 4. Try dragging someone onto a bench they are not signed off for. The drop is
    refused and names the reason.
 5. **Rules → Blood Cultures needs three people → Activate**, then regenerate.
-   The week goes infeasible and the screen names the conflict.
-   Pause the rule again afterwards.
+   The week goes infeasible and the screen names the conflict. Pause the rule
+   again afterwards.
 
 ---
 
-## Running the solver on your own machine
+## The reference solver
 
-Useful for changing the model without waiting on a runner.
+`solver/` holds a second implementation of the same model, in Python with
+Google OR-Tools CP-SAT. It is not part of the running app and never writes to
+the database. It exists to keep the browser solver honest: CI runs both against
+the same weeks and fails if they disagree on feasibility or on the value of the
+optimum.
 
 ```bash
 cd solver
@@ -226,12 +170,18 @@ python -m rotasolver.cli --self-check --print   # no database needed
 python -m pytest -q
 ```
 
-Against the real project:
+Ask it for a second opinion on real data — read-only:
 
 ```bash
 export SUPABASE_URL=https://YOUR-PROJECT.supabase.co
-export SUPABASE_SERVICE_ROLE_KEY=...
+export SUPABASE_SERVICE_ROLE_KEY=...     # only ever leaves your shell
 python -m rotasolver.cli --week 2026-09-14 --print
+```
+
+After changing the model, regenerate the cross-check fixtures and commit them:
+
+```bash
+python -m rotasolver.export_fixture ../web/src/solver/__fixtures__
 ```
 
 ---
@@ -249,18 +199,20 @@ some of them.
 **Auto Confirm User**. Delete and recreate, or confirm them in the dashboard.
 
 **Every screen is empty but there are no errors.** RLS is doing its job and you
-are not signed in, or the seed files have not been run. Check with:
+are not signed in, or the seed files have not been run. Check with
 `select count(*) from staff;` in the SQL editor.
 
-**The rota stays "Queued" for more than ten minutes.** The dispatch function is
-not deployed *and* the cron has not fired. Check **Actions** for a run of
-*Solve rota*; if the workflow is not there, the branch has not been pushed. Run
-it by hand to confirm the Supabase secrets are right.
+**Generate does nothing, or the console mentions a worker.** The solver runs in
+a Web Worker and loads a 3.4MB WebAssembly module on first use. A hard refresh
+clears a half-fetched cache. It needs no special headers and no cross-origin
+isolation.
 
-**The run comes back as `error`.** Open it under **Runs** — the traceback from
-the worker is stored on the run, and the run links to its GitHub Actions log.
+**A solve takes much longer than a couple of seconds.** The time is spent
+proving the rota is optimal, and it grows with how much freedom the rules leave.
+Settings → Solve time limit caps it; past the limit you get the best rota found
+so far rather than the proven best.
 
-**The week is infeasible and you did not expect it.** Read the conflict, it
-names the bench, the day and where every competent person went instead. The
-most common cause is an absence on a bench with a thin pool: **Benches** flags
-any bench whose competent pool is at or below its minimum.
+**The week is infeasible and you did not expect it.** Read the conflict: it
+names the bench, the day, and where every competent person went instead. The
+usual cause is an absence on a bench with a thin pool — **Benches** flags any
+bench whose competent pool is at or below its minimum.

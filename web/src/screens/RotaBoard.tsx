@@ -20,12 +20,16 @@ import {
   useCompetencyMatrix,
   usePins,
   usePublishedWeek,
-  useRunRealtime,
+  useRules,
   useShifts,
+  useSolverSettings,
   useStaff,
   useWeekRuns,
 } from "../lib/queries";
-import { dispatchSolve, supabase } from "../lib/supabase";
+import { buildProblem } from "../lib/buildProblem";
+import { persistRun } from "../lib/persistRun";
+import { SolveCancelled, solveInWorker, warmSolver } from "../solver";
+import { supabase } from "../lib/supabase";
 import type { Assignment, Bench, Staff } from "../lib/types";
 import { dayShort, formatDateShort, isWeekend, weekDates } from "../lib/week";
 import { useUiStore } from "../store/useUiStore";
@@ -46,8 +50,6 @@ export default function RotaBoard() {
   const setPinsPanelOpen = useUiStore((s) => s.setPinsPanelOpen);
   const queryClient = useQueryClient();
 
-  useRunRealtime(weekStart);
-
   const shifts = useShifts();
   const benches = useBenches();
   const groups = useBenchGroups();
@@ -59,17 +61,27 @@ export default function RotaBoard() {
   const runs = useWeekRuns(weekStart);
   const pins = usePins(weekStart);
   const published = usePublishedWeek(weekStart);
+  const rules = useRules();
+  const solverSettings = useSolverSettings();
 
   const latestRun = runs.data?.[0] ?? null;
   const assignments = useAssignments(latestRun?.id);
   const breaches = useBreaches(latestRun?.id);
 
   const [busy, setBusy] = useState(false);
+  const [solving, setSolving] = useState<{ startedAt: number } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [notice, setNotice] = useState<{ tone: DropVerdict | "info"; text: string } | null>(null);
   const [hover, setHover] = useState<{ key: string; verdict: DropVerdict } | null>(null);
   const [showBreaches, setShowBreaches] = useState(false);
   const dragRef = useRef<DragPayload | null>(null);
   const pinUndoStack = useRef<string[]>([]);
+
+  // Compile the solver wasm while the user is still reading the grid, so the
+  // first Generate does not pay for it.
+  useEffect(() => {
+    warmSolver();
+  }, []);
 
   const activeShiftId = shiftId ?? shifts.data?.find((s) => s.is_default)?.id ?? shifts.data?.[0]?.id ?? null;
   const dates = useMemo(() => weekDates(weekStart), [weekStart]);
@@ -124,43 +136,68 @@ export default function RotaBoard() {
   );
 
   const pinCount = pins.data?.length ?? 0;
-  const solving = latestRun?.status === "queued" || latestRun?.status === "running";
   const isPublished = published.data?.published_run_id === latestRun?.id && Boolean(latestRun);
 
   /* -- actions ------------------------------------------------------------ */
 
   const generate = useCallback(async () => {
-    setBusy(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setSolving({ startedAt: Date.now() });
     setNotice(null);
     try {
-      const { data, error } = await supabase.rpc("queue_rota_run", { p_week_start: weekStart });
-      if (error) throw new Error(error.message);
-      const runId = data as string;
-      await queryClient.invalidateQueries({ queryKey: ["rota_run"] });
-      const result = await dispatchSolve(runId, weekStart);
-      if (!result?.dispatched) {
+      const problem = buildProblem({
+        weekStart,
+        shifts: shifts.data ?? [],
+        benches: benches.data ?? [],
+        requirements: requirements.data ?? [],
+        staff: staff.data ?? [],
+        competencies: matrix.data ?? [],
+        availability: availability.data ?? [],
+        absences: absences.data ?? [],
+        rules: rules.data ?? [],
+        pins: pins.data ?? [],
+        settings: solverSettings.data ?? [],
+      });
+
+      const result = await solveInWorker(problem, controller.signal);
+
+      const { data: auth } = await supabase.auth.getUser();
+      await persistRun(problem, result, {
+        requestedBy: auth.user?.id ?? null,
+        requestedByName:
+          (auth.user?.user_metadata?.display_name as string | undefined) ??
+          auth.user?.email?.split("@")[0] ??
+          null,
+      });
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["rota_run"] }),
+        queryClient.invalidateQueries({ queryKey: ["assignment"] }),
+        queryClient.invalidateQueries({ queryKey: ["rule_breach"] }),
+      ]);
+    } catch (error) {
+      if (error instanceof SolveCancelled) {
+        setNotice({ tone: "info", text: "Solve cancelled. Nothing was recorded." });
+      } else {
         setNotice({
-          tone: "info",
-          text:
-            result?.note ??
-            "Queued. The scheduled worker will pick this up within ten minutes.",
+          tone: "hard",
+          text: error instanceof Error ? error.message : String(error),
         });
       }
-    } catch (error) {
-      setNotice({ tone: "hard", text: error instanceof Error ? error.message : String(error) });
     } finally {
-      setBusy(false);
+      abortRef.current = null;
+      setSolving(null);
     }
-  }, [weekStart, queryClient]);
+  }, [
+    weekStart, shifts.data, benches.data, requirements.data, staff.data,
+    matrix.data, availability.data, absences.data, rules.data, pins.data,
+    solverSettings.data, queryClient,
+  ]);
 
-  const cancelRun = useCallback(async () => {
-    if (!latestRun) return;
-    await supabase
-      .from("rota_run")
-      .update({ status: "cancelled", status_detail: "Cancelled from the board." })
-      .eq("id", latestRun.id);
-    await queryClient.invalidateQueries({ queryKey: ["rota_run"] });
-  }, [latestRun, queryClient]);
+  const cancelSolve = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const publish = useCallback(async () => {
     if (!latestRun) return;
@@ -417,7 +454,7 @@ export default function RotaBoard() {
             type="button"
             className="btn btn--primary"
             onClick={generate}
-            disabled={busy || solving}
+            disabled={busy || Boolean(solving)}
           >
             {pinCount > 0
               ? `Re-solve around ${pinCount} ${pinCount === 1 ? "pin" : "pins"}`
@@ -441,7 +478,8 @@ export default function RotaBoard() {
 
       <SolveStatus
         run={latestRun}
-        onCancel={cancelRun}
+        solving={solving}
+        onCancel={cancelSolve}
         onOpenBreaches={() => setShowBreaches(true)}
       />
 

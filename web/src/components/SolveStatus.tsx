@@ -7,52 +7,51 @@ import { formatDuration } from "../lib/week";
  * treatment rather than a spinner: queued, claimed, finished, or impossible. */
 export function SolveStatus({
   run,
+  solving,
   onCancel,
   onOpenBreaches,
 }: {
   run: RotaRun | null;
+  /** Set while a solve is running in the worker, with the moment it started. */
+  solving: { startedAt: number } | null;
   onCancel?: () => void;
   onOpenBreaches?: () => void;
 }) {
   const [elapsed, setElapsed] = useState(0);
-  const working = run?.status === "queued" || run?.status === "running";
 
   useEffect(() => {
-    if (!working || !run) {
+    if (!solving) {
       setElapsed(0);
       return;
     }
-    const started = new Date(run.requested_at).getTime();
-    const tick = () => setElapsed(Math.max(0, Date.now() - started));
+    const tick = () => setElapsed(Math.max(0, Date.now() - solving.startedAt));
     tick();
-    const timer = window.setInterval(tick, 1000);
+    // The counter is only honest because the solve is on a worker; on the main
+    // thread this interval would not get to run.
+    const timer = window.setInterval(tick, 100);
     return () => window.clearInterval(timer);
-  }, [working, run]);
+  }, [solving]);
 
-  if (!run) {
-    return (
-      <div className="solve-status solve-status--idle">
-        <span>No rota generated for this week yet.</span>
-      </div>
-    );
-  }
-
-  if (working) {
-    const seconds = Math.floor(elapsed / 1000);
+  if (solving) {
+    const seconds = elapsed / 1000;
     return (
       <div className="solve-status solve-status--working" role="status" aria-live="polite">
         <span className="solve-status__pulse" aria-hidden="true" />
-        <span>
-          {run.status === "queued"
-            ? "Queued. Waiting for a solver runner to pick this up."
-            : "Solving on a runner."}
-        </span>
-        <span className="mono solve-status__clock">{seconds}s</span>
+        <span>Solving.</span>
+        <span className="mono solve-status__clock">{seconds.toFixed(1)}s</span>
         {seconds >= 3 && onCancel && (
           <button type="button" className="btn btn--quiet" onClick={onCancel}>
             Cancel
           </button>
         )}
+      </div>
+    );
+  }
+
+  if (!run) {
+    return (
+      <div className="solve-status solve-status--idle">
+        <span>No rota generated for this week yet.</span>
       </div>
     );
   }

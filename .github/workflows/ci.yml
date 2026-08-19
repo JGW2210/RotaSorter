@@ -27,19 +27,36 @@ jobs:
         run: python -m rotasolver.cli --self-check
 
   seed:
-    name: Seed SQL is in sync with its generator
+    name: Generated files are in sync
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Regenerate and diff
+          cache: pip
+          cache-dependency-path: solver/pyproject.toml
+      - name: Install solver
+        working-directory: solver
+        run: pip install -e .
+      - name: Seed SQL matches its generator
         run: |
           python3 supabase/seed/generate_seed.py
           if ! git diff --quiet -- supabase/seed; then
             echo "::error::Seed SQL is out of date. Run supabase/seed/generate_seed.py and commit."
             git diff --stat -- supabase/seed
+            exit 1
+          fi
+      - name: Cross-check fixtures match the reference solver
+        working-directory: solver
+        run: |
+          python3 -m rotasolver.export_fixture ../web/src/solver/__fixtures__
+          cd ..
+          if ! git diff --quiet -- web/src/solver/__fixtures__; then
+            echo "::error::The reference solver now answers differently. Either the model"
+            echo "::error::changed on purpose (regenerate and commit the fixtures), or"
+            echo "::error::something regressed."
+            git diff --stat -- web/src/solver/__fixtures__
             exit 1
           fi
 
@@ -59,6 +76,6 @@ jobs:
       - name: Typecheck and build
         working-directory: web
         run: npm run build
-      - name: Tests
+      - name: Tests, including the cross-check against the reference solver
         working-directory: web
         run: npm run test -- --run

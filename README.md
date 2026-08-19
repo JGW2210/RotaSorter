@@ -19,12 +19,16 @@ anything uncovered?**
 |---|---|
 | Web app | React, TypeScript and Vite, deployed to GitHub Pages |
 | Database and auth | Supabase, with row level security on every table |
-| Solver | Google OR-Tools CP-SAT, on a GitHub Actions runner |
+| Solver | HiGHS compiled to WebAssembly, in a Web Worker in the browser |
+| Reference solver | Google OR-Tools CP-SAT, Python, CI only |
 
-The solver runs on a runner because OR-Tools has no browser build and Supabase
-Edge Functions are Deno. The UI queues a run, an edge function starts the
-workflow, and the board follows it over Supabase Realtime. See
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The rota is solved in the tab you are looking at, in about two seconds. No
+server, no queue, no background worker, and the only two credentials involved
+are both safe to publish.
+
+`solver/` holds the same model in CP-SAT. It is not part of the app: CI runs
+both against the same weeks and fails if they disagree on feasibility or on the
+value of the optimum. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Getting it running
 
@@ -42,7 +46,7 @@ cd web && cp ../.env.example .env.local && $EDITOR .env.local
 npm install && npm run dev
 ```
 
-To see the solver work with no database at all:
+To see the reference solver work with no database at all:
 
 ```bash
 cd solver && pip install -e ".[dev]"
@@ -72,8 +76,14 @@ three places this departs from the design spec.
 
 ```bash
 cd solver && python -m pytest -q      # 39 tests: rules, constraints, diagnosis
-cd web && npm run test -- --run       # 41 tests: week maths, coverage, rule text
+cd web && npm run test -- --run       # 67 tests, including the cross-check
 ```
 
-CI runs both, re-runs the solver against the seeded week, and fails if the seed
-SQL has drifted from the generator that produces it.
+The cross-check is the interesting one: it solves four weeks with both solvers
+and asserts they reach the same verdict and the same optimal objective value.
+Both are exact optimisers, so a mis-ported constraint shows up as a different
+optimum.
+
+CI runs both suites, re-runs the reference solver against the seeded week, and
+fails if either the seed SQL or the cross-check fixtures have drifted from the
+generators that produce them.

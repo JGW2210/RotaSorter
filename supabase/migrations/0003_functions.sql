@@ -324,8 +324,11 @@ $$;
 grant execute on function recompute_competency_from_documents() to authenticated;
 
 -- ---------------------------------------------------------------------
--- Realtime: the UI subscribes to run status so the Rota Board can move
--- through queued -> running -> solved without polling.
+-- Realtime.
+--
+-- The browser solves its own rotas now, so nothing subscribes to these. Kept
+-- because it costs nothing, and because a second person watching the same week
+-- still gets the board updated under them when a colleague publishes.
 -- ---------------------------------------------------------------------
 do $$
 begin

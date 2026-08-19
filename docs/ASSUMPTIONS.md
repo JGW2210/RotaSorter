@@ -5,16 +5,23 @@ it deliberately does something different. Nothing here is hidden in the code.
 
 ## Departures from the spec
 
-### The solver does not run client-side
+### The solver is client-side, but it is not OR-Tools
 
-The spec says "solver running client-side" and designs the solve states around a
-1.4-second in-page solve. Google OR-Tools CP-SAT has no browser build, so this
-was not possible while keeping OR-Tools, which the brief asked for by name.
+The spec asks for a client-side solve; the brief asked for OR-Tools by name.
+Both were not possible: CP-SAT has no browser build.
 
-The solver runs on a GitHub Actions runner. Section 4.3's four states survive
-intact — the *Solving* state gains a queued phase and an elapsed counter driven
-by Supabase Realtime rather than by solver callbacks, and the cancel control
-still appears after three seconds. See `docs/ARCHITECTURE.md`.
+The first version put CP-SAT on a GitHub Actions runner, which made a 0.8 second
+computation take forty seconds and needed six credentials to arrange. Auditing
+the model showed it never used constraint programming at all — every constraint
+was linear or a standard indicator — so it is now a mixed-integer program solved
+by HiGHS compiled to WebAssembly, in a Web Worker.
+
+That satisfies the spec's own architecture. Section 4.3's four states are intact
+and the elapsed counter is honest because the solve is off the main thread. The
+cost is about 1.7 seconds rather than the 1.4 the spec imagined.
+
+The CP-SAT implementation is kept in `solver/` as the reference the browser
+solver is checked against. See `docs/ARCHITECTURE.md`.
 
 ### The Late shift is defined but not staffed
 
