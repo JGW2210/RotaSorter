@@ -17,7 +17,10 @@ export type RuleAction =
   | "requires_supervisor"
   | "same_bench_all_week"
   | "max_shifts_in_period"
-  | "not_together";
+  | "max_consecutive_days"
+  | "min_days_in_period"
+  | "not_together"
+  | "must_be_together";
 
 export type RunStatus =
   | "queued"

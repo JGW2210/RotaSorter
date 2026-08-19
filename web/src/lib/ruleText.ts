@@ -328,11 +328,55 @@ export function ruleToSentence(rule: RuleLike, ctx: RuleTextContext = {}): strin
         eithers,
       ]);
 
+    case "max_consecutive_days": {
+      const sameBench = rule.params?.["same_bench"] !== false;
+      // "more than 1 day in a row" is just "two days in a row", so say that.
+      const run = n === 1 ? "two days in a row" : `more than ${n} days in a row`;
+      if (sameBench) {
+        return sentence([
+          who(parsed, "anyone"),
+          "cannot work",
+          benchPhrase(parsed, "") || "the same bench",
+          run,
+          when,
+          eithers,
+        ]);
+      }
+      return sentence([
+        who(parsed, "anyone"),
+        "cannot work",
+        run,
+        benchPhrase(parsed, "on"),
+        when,
+        eithers,
+      ]);
+    }
+
+    case "min_days_in_period":
+      return sentence([
+        who(parsed, "anyone"),
+        `must work at least ${n} ${pluralise(n, "day")}`,
+        benchPhrase(parsed, "on"),
+        when,
+        eithers,
+      ]);
+
     case "not_together": {
       const names = parsed.people.flatMap((c) => c.values);
       return sentence([
         names.length >= 2 ? listPhrase(names) : who(parsed, "the people named"),
         "cannot be on the same bench on the same day",
+        when,
+        eithers,
+      ]);
+    }
+
+    case "must_be_together": {
+      const names = parsed.people.flatMap((c) => c.values);
+      return sentence([
+        names.length >= 2 ? listPhrase(names) : who(parsed, "the people named"),
+        "must be on the same bench on any day",
+        names.length > 2 ? "they are all in" : "both are in",
         when,
         eithers,
       ]);

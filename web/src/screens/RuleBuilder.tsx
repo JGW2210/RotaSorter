@@ -37,7 +37,10 @@ const ACTIONS: { value: RuleAction; label: string; needsN?: boolean }[] = [
   { value: "requires_supervisor", label: "Requires a supervisor present" },
   { value: "same_bench_all_week", label: "Must stay on the same bench all week" },
   { value: "max_shifts_in_period", label: "Maximum shifts in the period", needsN: true },
+  { value: "max_consecutive_days", label: "Maximum days in a row", needsN: true },
+  { value: "min_days_in_period", label: "Minimum days in the period", needsN: true },
   { value: "not_together", label: "Never rota these together" },
+  { value: "must_be_together", label: "Always rota these together" },
 ];
 
 /* Most rules people write are variations of about eight patterns. Starting
@@ -109,6 +112,56 @@ const PRESETS: { label: string; description: string; build: () => Partial<DraftR
       weight: 40,
       params: { n: 3 },
       conditions: { op: "all", children: [{ subject: "bench", operator: "is", values: [] }] },
+    }),
+  },
+  {
+    label: "Never the same bench two days running",
+    description: "Nobody repeats a bench on consecutive days.",
+    build: () => ({
+      action: "max_consecutive_days",
+      is_hard: true,
+      params: { n: 1, same_bench: true },
+      conditions: { op: "all", children: [] },
+    }),
+  },
+  {
+    label: "Rest after a heavy bench",
+    description: "Cap how many days in a row anyone does one draining bench.",
+    build: () => ({
+      action: "max_consecutive_days",
+      is_hard: false,
+      weight: 60,
+      params: { n: 2, same_bench: true },
+      conditions: { op: "all", children: [{ subject: "bench", operator: "is", values: [] }] },
+    }),
+  },
+  {
+    label: "Guaranteed training days",
+    description: "Someone must get at least N days on a bench this week.",
+    build: () => ({
+      action: "min_days_in_period",
+      is_hard: false,
+      weight: 80,
+      params: { n: 2 },
+      conditions: {
+        op: "all",
+        children: [
+          { subject: "person", operator: "is", values: [] },
+          { subject: "bench", operator: "is", values: [] },
+        ],
+      },
+    }),
+  },
+  {
+    label: "Keep a trainee with their trainer",
+    description: "Two people who share a bench on any day both are in.",
+    build: () => ({
+      action: "must_be_together",
+      is_hard: true,
+      conditions: {
+        op: "all",
+        children: [{ subject: "person", operator: "is one of", values: [] }],
+      },
     }),
   },
 ];
@@ -278,6 +331,23 @@ export default function RuleBuilder() {
     navigate("/rules");
   }
 
+  async function remove() {
+    if (!ruleId) return;
+    if (!window.confirm("Delete this rule? Past runs keep the snapshot they solved with.")) {
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const { error } = await supabase.from("rule").delete().eq("id", ruleId);
+    setSaving(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["rule"] });
+    navigate("/rules");
+  }
+
   if (rules.isLoading || staff.isLoading) return <Loading what="the builder" />;
   if (rules.error) return <ErrorNote error={rules.error} />;
 
@@ -392,6 +462,21 @@ export default function RuleBuilder() {
                   }
                 />
               )}
+              {draft.action === "max_consecutive_days" && (
+                <select
+                  value={draft.params.same_bench === false ? "any" : "same"}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      params: { ...draft.params, same_bench: e.target.value === "same" },
+                    })
+                  }
+                  aria-label="What counts as a repeat"
+                >
+                  <option value="same">counting the same bench</option>
+                  <option value="any">counting any matching bench</option>
+                </select>
+              )}
               {draft.action === "requires_supervisor" && (
                 <select
                   value={String(draft.params.supervisor_level ?? "trainer")}
@@ -481,6 +566,11 @@ export default function RuleBuilder() {
             </dl>
             {error && <p className="login__error">{error}</p>}
             <div className="builder__save">
+              {ruleId && (
+                <button type="button" className="btn btn--quiet" onClick={remove} disabled={saving}>
+                  Delete
+                </button>
+              )}
               <button type="button" className="btn" onClick={() => navigate("/rules")}>
                 Cancel
               </button>

@@ -15,7 +15,10 @@ const ACTION_LABELS: Record<string, string> = {
   requires_supervisor: "Requires supervisor",
   same_bench_all_week: "Same bench all week",
   max_shifts_in_period: "Max shifts",
+  max_consecutive_days: "Max days in a row",
+  min_days_in_period: "Min days",
   not_together: "Never together",
+  must_be_together: "Always together",
 };
 
 export default function Rules() {
@@ -47,6 +50,24 @@ export default function Rules() {
       .from("rule")
       .update({ status: rule.status === "active" ? "paused" : "active" })
       .eq("id", rule.id);
+    await queryClient.invalidateQueries({ queryKey: ["rule"] });
+  }
+
+  /* Copies arrive paused: a live duplicate would silently double a soft
+     rule's weight the moment it lands. */
+  async function duplicate(rule: Rule) {
+    await supabase.from("rule").insert({
+      name: `${rule.name} (copy)`,
+      description: rule.description,
+      action: rule.action,
+      params: rule.params,
+      conditions: rule.conditions,
+      scope: rule.scope,
+      is_hard: rule.is_hard,
+      weight: rule.weight,
+      status: "paused",
+      plain_english: rule.plain_english,
+    });
     await queryClient.invalidateQueries({ queryKey: ["rule"] });
   }
 
@@ -137,6 +158,9 @@ export default function Rules() {
                 <td>
                   <button type="button" className="btn btn--quiet" onClick={() => void toggleStatus(rule)}>
                     {rule.status === "active" ? "Pause" : "Activate"}
+                  </button>
+                  <button type="button" className="btn btn--quiet" onClick={() => void duplicate(rule)}>
+                    Duplicate
                   </button>
                 </td>
               </tr>
