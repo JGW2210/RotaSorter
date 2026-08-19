@@ -79,6 +79,52 @@ begin
   end if;
   raise notice 'publish_rota records the week, and repeats cleanly';
 
+  -- publish_rota(): a run planned against an unpublished week is held back
+  -- until that week is published as the same run; the override setting
+  -- publishes it anyway.
+  declare
+    v_prior       uuid;
+    v_next        uuid;
+    v_replacement uuid;
+  begin
+    insert into rota_run (week_start, status) values (v_week + 7, 'solved')
+    returning id into v_prior;
+    insert into rota_run (week_start, status, history_run_id)
+    values (v_week + 14, 'solved', v_prior)
+    returning id into v_next;
+
+    begin
+      perform publish_rota(v_next);
+      raise exception 'publish_rota published a run planned against an unpublished week';
+    exception when raise_exception then
+      if sqlerrm like '%publish_rota published%' then raise; end if;
+    end;
+    raise notice 'publish_rota holds a run planned against an unpublished week';
+
+    perform publish_rota(v_prior);
+    perform publish_rota(v_next);
+    raise notice 'publishing the earlier week releases the later one';
+
+    -- Re-publishing the earlier week as a different run stales the later
+    -- week again: its assumptions no longer describe what that week gets.
+    insert into rota_run (week_start, status) values (v_week + 7, 'solved')
+    returning id into v_replacement;
+    perform publish_rota(v_replacement);
+
+    begin
+      perform publish_rota(v_next);
+      raise exception 'publish_rota accepted a run whose basis was replaced';
+    exception when raise_exception then
+      if sqlerrm like '%whose basis was replaced%' then raise; end if;
+    end;
+    raise notice 'replacing the basis holds the later week again';
+
+    update solver_setting set value = '1' where key = 'allow_publish_out_of_order';
+    perform publish_rota(v_next);
+    update solver_setting set value = '0' where key = 'allow_publish_out_of_order';
+    raise notice 'the override setting publishes out of order on purpose';
+  end;
+
   -- recompute_competency_from_documents(): derives the matrix from sign-off
   -- without demoting anyone a human made a trainer.
   select count(*) into n from competency where level = 'trainer';

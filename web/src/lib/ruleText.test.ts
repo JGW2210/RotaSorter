@@ -134,6 +134,70 @@ describe("the seeded rules read as English", () => {
       ),
     ).toBe("Blood Cultures must have at least 3 people on it.");
   });
+
+  it("renders the no-repeat rule, saying two days rather than more than one", () => {
+    expect(
+      ruleToSentence(
+        {
+          action: "max_consecutive_days",
+          params: { n: 1, same_bench: true },
+          conditions: { op: "all", children: [] },
+        },
+        ctx,
+      ),
+    ).toBe("Anyone cannot work the same bench two days in a row.");
+  });
+
+  it("renders a consecutive cap on one bench", () => {
+    expect(
+      ruleToSentence(
+        {
+          action: "max_consecutive_days",
+          params: { n: 2 },
+          conditions: all(cond("bench", "is", ["Blood Cultures"])),
+        },
+        ctx,
+      ),
+    ).toBe("Anyone cannot work Blood Cultures more than 2 days in a row.");
+  });
+
+  it("renders a consecutive cap across a group", () => {
+    expect(
+      ruleToSentence(
+        {
+          action: "max_consecutive_days",
+          params: { n: 2, same_bench: false },
+          conditions: all(cond("bench", "is in group", ["Sterile Sites"])),
+        },
+        ctx,
+      ),
+    ).toBe("Anyone cannot work more than 2 days in a row on any bench in Sterile Sites.");
+  });
+
+  it("renders a guaranteed minimum of days", () => {
+    expect(
+      ruleToSentence(
+        {
+          action: "min_days_in_period",
+          params: { n: 2 },
+          conditions: all(cond("person", "is", ["TRN-0402"]), cond("bench", "is", ["Urines"])),
+        },
+        ctx,
+      ),
+    ).toBe("Hannah Ng must work at least 2 days on Urines.");
+  });
+
+  it("renders a pair kept together", () => {
+    expect(
+      ruleToSentence(
+        {
+          action: "must_be_together",
+          conditions: all(cond("person", "is one of", ["BMS-0141", "BMS-0155"])),
+        },
+        ctx,
+      ),
+    ).toBe("Marcus Kell and Sarah Patel must be on the same bench on any day both are in.");
+  });
 });
 
 describe("negation and days", () => {

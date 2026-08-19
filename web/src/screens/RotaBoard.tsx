@@ -19,6 +19,7 @@ import {
   useBreaches,
   useCompetencyMatrix,
   usePins,
+  usePriorWeekHistory,
   usePublishedWeek,
   useRules,
   useShifts,
@@ -31,7 +32,7 @@ import { persistRun } from "../lib/persistRun";
 import { SolveCancelled, solveInWorker, warmSolver } from "../solver";
 import { supabase } from "../lib/supabase";
 import type { Assignment, Bench, Staff } from "../lib/types";
-import { dayShort, formatDateShort, isWeekend, weekDates } from "../lib/week";
+import { addWeeks, dayShort, formatDateShort, isWeekend, weekDates } from "../lib/week";
 import { useUiStore } from "../store/useUiStore";
 
 interface DragPayload {
@@ -59,10 +60,21 @@ export default function RotaBoard() {
   const availability = useAvailability();
   const absences = useAbsences();
   const runs = useWeekRuns(weekStart);
-  const pins = usePins(weekStart);
   const published = usePublishedWeek(weekStart);
+  const priorPublished = usePublishedWeek(addWeeks(weekStart, -1));
   const rules = useRules();
   const solverSettings = useSolverSettings();
+
+  const settingOn = useCallback(
+    (key: string) =>
+      Number((solverSettings.data ?? []).find((s) => s.key === key)?.value ?? 0) === 1,
+    [solverSettings.data],
+  );
+  const planAhead = settingOn("history_from_unpublished");
+  const allowOutOfOrder = settingOn("allow_publish_out_of_order");
+
+  const pins = usePins(weekStart);
+  const priorHistory = usePriorWeekHistory(weekStart, planAhead);
 
   const latestRun = runs.data?.[0] ?? null;
   const assignments = useAssignments(latestRun?.id);
@@ -138,6 +150,23 @@ export default function RotaBoard() {
   const pinCount = pins.data?.length ?? 0;
   const isPublished = published.data?.published_run_id === latestRun?.id && Boolean(latestRun);
 
+  /* A run planned against another week's rota can only be published while
+     that week is published as the same run — the database enforces it, this
+     just says so before the click. */
+  const publishHold = (() => {
+    if (!latestRun?.history_run_id || allowOutOfOrder || isPublished) return null;
+    if (!["solved", "solved_with_breaches"].includes(latestRun.status)) return null;
+    if (priorPublished.data?.published_run_id === latestRun.history_run_id) return null;
+    return (
+      "This rota was planned against last week's rota, which is " +
+      (priorPublished.data?.published_run_id
+        ? "now published as a different run. Regenerate this week, or allow " +
+          "out-of-order publishing in Settings."
+        : "not yet published. Publish last week first, or allow out-of-order " +
+          "publishing in Settings.")
+    );
+  })();
+
   /* -- actions ------------------------------------------------------------ */
 
   const generate = useCallback(async () => {
@@ -157,6 +186,7 @@ export default function RotaBoard() {
         absences: absences.data ?? [],
         rules: rules.data ?? [],
         pins: pins.data ?? [],
+        history: priorHistory.data?.assignments ?? [],
         settings: solverSettings.data ?? [],
       });
 
@@ -169,6 +199,7 @@ export default function RotaBoard() {
           (auth.user?.user_metadata?.display_name as string | undefined) ??
           auth.user?.email?.split("@")[0] ??
           null,
+        historyRunId: priorHistory.data?.runId ?? null,
       });
 
       await Promise.all([
@@ -192,7 +223,7 @@ export default function RotaBoard() {
   }, [
     weekStart, shifts.data, benches.data, requirements.data, staff.data,
     matrix.data, availability.data, absences.data, rules.data, pins.data,
-    solverSettings.data, queryClient,
+    priorHistory.data, solverSettings.data, queryClient,
   ]);
 
   const cancelSolve = useCallback(() => {
@@ -464,11 +495,13 @@ export default function RotaBoard() {
             type="button"
             className="btn"
             onClick={publish}
+            title={publishHold ?? undefined}
             disabled={
               busy ||
               !latestRun ||
               !["solved", "solved_with_breaches"].includes(latestRun.status) ||
-              isPublished
+              isPublished ||
+              Boolean(publishHold)
             }
           >
             {isPublished ? "Published" : "Publish"}
@@ -489,6 +522,12 @@ export default function RotaBoard() {
           <button type="button" className="btn btn--quiet" onClick={() => setNotice(null)}>
             Dismiss
           </button>
+        </div>
+      )}
+
+      {publishHold && (
+        <div className="notice notice--info" role="status">
+          <span>{publishHold}</span>
         </div>
       )}
 

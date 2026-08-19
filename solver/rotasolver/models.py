@@ -120,6 +120,21 @@ class Pin:
     reason: str | None = None
 
 
+@dataclass(frozen=True)
+class PastAssignment:
+    """An assignment that already happened, from last week's published rota.
+
+    History is fact, not choice: it enters the model only as constants, so
+    rules that look at runs of days can see across the Sunday-to-Monday
+    boundary.
+    """
+
+    staff_id: str
+    work_date: date
+    shift_id: str
+    bench_id: str
+
+
 DEFAULT_SETTINGS: dict[str, int] = {
     "weight_fairness_spread": 20,
     "weight_rotation_repeat": 12,
@@ -143,6 +158,7 @@ class Problem:
     availability: list[Availability] = field(default_factory=list)
     rules: list[Rule] = field(default_factory=list)
     pins: list[Pin] = field(default_factory=list)
+    history: list[PastAssignment] = field(default_factory=list)
     settings: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_SETTINGS))
 
     # -- lookups ------------------------------------------------------------

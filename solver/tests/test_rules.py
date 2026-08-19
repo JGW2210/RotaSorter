@@ -1,12 +1,23 @@
 """Condition matching and rule compilation."""
 
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 
 from rotasolver.fixtures import seeded_problem
-from rotasolver.models import Problem, Rule
+from rotasolver.models import (
+    Absence,
+    Availability,
+    Bench,
+    Competency,
+    PastAssignment,
+    Problem,
+    Requirement,
+    Rule,
+    Shift,
+    Staff,
+)
 from rotasolver.rules import (
     Slot,
     condition_people,
@@ -239,3 +250,174 @@ def test_soft_rule_breach_is_reported_rather_than_blocking(problem):
     assert breach.weight == 90
     assert breach.staff_id == "SBMS-0041"
     assert breach.detail
+
+
+# -- the consecutive-day, minimum-day and together actions --------------------
+#
+# Tiny purpose-built weeks rather than the seeded one: each rule's behaviour
+# is then forced, not found by accident among twenty staff.
+
+MON = date(2026, 9, 14)
+
+
+def tiny(staff_codes, bench_names, *, min_staff=1, max_staff=1,
+         rules=(), absences=(), history=()) -> Problem:
+    """One DAY shift, every person competent on every bench, Mon-Fri cover."""
+    staff = [Staff(id=c, code=c, full_name=c, grade="bms") for c in staff_codes]
+    return Problem(
+        week_start=MON,
+        shifts=[Shift(id="DAY", code="DAY", name="Day")],
+        benches=[Bench(id=b, name=b, group_name=None) for b in bench_names],
+        requirements=[
+            Requirement(bench_id=b, shift_id="DAY", label="Mon-Fri",
+                        weekdays=frozenset({1, 2, 3, 4, 5}),
+                        min_staff=min_staff, max_staff=max_staff)
+            for b in bench_names
+        ],
+        staff=staff,
+        competencies=[
+            Competency(staff_id=s.id, bench_id=b, level="competent")
+            for s in staff for b in bench_names
+        ],
+        availability=[
+            Availability(staff_id=s.id, weekday=w, shift_id="DAY")
+            for s in staff for w in range(1, 6)
+        ],
+        absences=list(absences),
+        rules=list(rules),
+        history=list(history),
+    )
+
+
+def rule(action, *, params=None, conditions=None, is_hard=True, weight=50,
+         name="under test") -> Rule:
+    return Rule(
+        id="under-test", name=name, action=action, params=params or {},
+        conditions=conditions or {"op": "all", "children": []},
+        is_hard=is_hard, weight=weight,
+    )
+
+
+def test_max_consecutive_days_forces_alternation():
+    problem = tiny(["A", "B"], ["X"], rules=[
+        rule("max_consecutive_days", params={"n": 1, "same_bench": True}),
+    ])
+    solution = solve(problem)
+    assert solution.status == "solved", solution.log
+    for person in ("A", "B"):
+        days = sorted(a.work_date for a in solution.assignments if a.staff_id == person)
+        for d1, d2 in zip(days, days[1:]):
+            assert (d2 - d1).days > 1, f"{person} works X on {d1} and {d2}"
+
+
+def test_max_consecutive_days_counts_last_weeks_published_rota():
+    """A worked X on the Sunday, so the Monday must go to B."""
+    problem = tiny(
+        ["A", "B"], ["X"],
+        rules=[rule("max_consecutive_days", params={"n": 1, "same_bench": True})],
+        history=[PastAssignment(staff_id="A", work_date=MON - timedelta(days=1),
+                                shift_id="DAY", bench_id="X")],
+    )
+    solution = solve(problem)
+    assert solution.status == "solved", solution.log
+    monday = next(a for a in solution.assignments if a.work_date == MON)
+    assert monday.staff_id == "B"
+    assert "look back" in solution.log
+
+
+def test_history_is_ignored_without_a_consecutive_rule():
+    problem = tiny(
+        ["A"], ["X"],
+        history=[PastAssignment(staff_id="A", work_date=MON - timedelta(days=1),
+                                shift_id="DAY", bench_id="X")],
+    )
+    solution = solve(problem)
+    assert solution.status == "solved"
+    assert len(solution.assignments) == 5
+
+
+def test_max_consecutive_days_hard_is_infeasible_when_one_person_must_repeat():
+    problem = tiny(["A"], ["X"], rules=[
+        rule("max_consecutive_days", params={"n": 2}),
+    ])
+    solution = solve(problem)
+    assert solution.status == "infeasible"
+
+
+def test_max_consecutive_days_soft_reports_the_run():
+    problem = tiny(["A"], ["X"], rules=[
+        rule("max_consecutive_days", params={"n": 2}, is_hard=False, weight=50),
+    ])
+    solution = solve(problem)
+    assert solution.status == "solved_with_breaches"
+    breach = next(b for b in solution.breaches if b.rule_name == "under test")
+    assert "in a row" in breach.detail
+    assert breach.staff_id == "A"
+
+
+def test_min_days_in_period_guarantees_the_floor():
+    problem = tiny(["A", "B"], ["X"], rules=[
+        rule("min_days_in_period", params={"n": 3}, conditions={
+            "op": "all",
+            "children": [{"subject": "person", "operator": "is", "values": ["A"]}],
+        }),
+    ])
+    solution = solve(problem)
+    assert solution.status == "solved", solution.log
+    assert sum(1 for a in solution.assignments if a.staff_id == "A") >= 3
+
+
+def test_min_days_for_a_person_absent_all_week_is_infeasible():
+    problem = tiny(
+        ["A", "B"], ["X"],
+        absences=[Absence(staff_id="A", starts_on=MON, ends_on=MON + timedelta(days=6))],
+        rules=[
+            rule("min_days_in_period", params={"n": 2}, conditions={
+                "op": "all",
+                "children": [{"subject": "person", "operator": "is", "values": ["A"]}],
+            }),
+        ],
+    )
+    solution = solve(problem)
+    assert solution.status == "infeasible"
+
+
+def test_must_be_together_shares_a_bench():
+    problem = tiny(["A", "B", "C"], ["X", "Y"], max_staff=2, rules=[
+        rule("must_be_together", conditions={
+            "op": "all",
+            "children": [{"subject": "person", "operator": "is one of", "values": ["A", "B"]}],
+        }),
+    ])
+    solution = solve(problem)
+    assert solution.status == "solved", solution.log
+    where = {(a.staff_id, a.work_date): a.bench_id for a in solution.assignments}
+    for day in [MON + timedelta(days=i) for i in range(5)]:
+        bench_a, bench_b = where.get(("A", day)), where.get(("B", day))
+        if bench_a and bench_b:
+            assert bench_a == bench_b, f"A and B are apart on {day}"
+
+
+def test_must_be_together_hard_is_infeasible_when_coverage_splits_the_pair():
+    problem = tiny(["A", "B"], ["X", "Y"], rules=[
+        rule("must_be_together", conditions={
+            "op": "all",
+            "children": [{"subject": "person", "operator": "is one of", "values": ["A", "B"]}],
+        }),
+    ])
+    solution = solve(problem)
+    assert solution.status == "infeasible"
+
+
+def test_must_be_together_soft_reports_each_day_apart():
+    problem = tiny(["A", "B"], ["X", "Y"], rules=[
+        rule("must_be_together", is_hard=False, weight=40, conditions={
+            "op": "all",
+            "children": [{"subject": "person", "operator": "is one of", "values": ["A", "B"]}],
+        }),
+    ])
+    solution = solve(problem)
+    assert solution.status == "solved_with_breaches"
+    apart = [b for b in solution.breaches if b.rule_name == "under test"]
+    assert len(apart) == 5
+    assert all("different benches" in b.detail for b in apart)

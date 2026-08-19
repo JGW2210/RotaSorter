@@ -55,6 +55,9 @@
 
   --accent: #245c8a;
   --accent-soft: #e2ecf4;
+  /* Text placed on a solid --accent fill. Not always white: the dark theme's
+     accent is light, and white on it fails contrast. */
+  --accent-contrast: #ffffff;
 
   /* Type */
   --font-display: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
@@ -84,8 +87,15 @@
 
   --rail-width: 168px;
   --header-height: 46px;
+  --control-height: 26px;
+
+  /* Reading widths: tables can run wide, prose and forms cannot. */
+  --content-max: 1360px;
+  --reading-max: 960px;
 
   --shadow-panel: 0 1px 2px rgb(22 32 42 / 0.08), 0 8px 24px rgb(22 32 42 / 0.08);
+  /* The lift that separates a card from the page without announcing itself. */
+  --shadow-card: 0 1px 2px rgb(22 32 42 / 0.06);
   --focus-ring: 0 0 0 2px var(--surface-raised), 0 0 0 4px var(--accent);
 }
 
@@ -98,6 +108,7 @@
   --space-6: 26px;
   --row-height: 34px;
   --cell-pad: 9px;
+  --control-height: 32px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -138,8 +149,10 @@
 
     --accent: #6fb0e0;
     --accent-soft: #14232e;
+    --accent-contrast: #0b1116;
 
     --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.45);
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
   }
 }
 
@@ -173,5 +186,7 @@
   --override-line: #4c4177;
   --accent: #6fb0e0;
   --accent-soft: #14232e;
+  --accent-contrast: #0b1116;
   --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.45);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
 }

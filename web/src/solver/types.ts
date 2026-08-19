@@ -85,6 +85,18 @@ export interface SolverPin {
   staffId: string;
 }
 
+/** An assignment that already happened, from last week's published rota.
+ *
+ * History is fact, not choice: it enters the model only as constants, so rules
+ * that look at runs of days can see across the Sunday-to-Monday boundary.
+ */
+export interface PastAssignment {
+  staffId: string;
+  workDate: string;
+  shiftId: string;
+  benchId: string;
+}
+
 export interface SolverSettings {
   weight_fairness_spread: number;
   weight_rotation_repeat: number;
@@ -116,6 +128,8 @@ export interface SolverProblem {
   availability: SolverAvailability[];
   rules: SolverRule[];
   pins: SolverPin[];
+  /** Optional: last week's published assignments. Absent in older fixtures. */
+  history?: PastAssignment[];
   settings: SolverSettings;
 }
 

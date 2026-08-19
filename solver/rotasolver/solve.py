@@ -11,7 +11,7 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Callable
 
 from ortools.sat.python import cp_model
@@ -24,7 +24,14 @@ from .models import (
     Solution,
     WEEKDAY_NAMES,
 )
-from .rules import Slot, condition_people, group_in_scope, matches, scope_slots
+from .rules import (
+    Slot,
+    condition_people,
+    group_in_scope,
+    matches,
+    scope_slots,
+    strip_staff_conditions,
+)
 
 SOLVER_VERSION = "rotasolver 0.1.0"
 
@@ -221,6 +228,14 @@ class RotaModel:
     # -- rules --------------------------------------------------------------
 
     def _apply_rules(self) -> None:
+        if self.p.history and any(
+            r.action == "max_consecutive_days" and r.status == "active"
+            for r in self.p.rules
+        ):
+            self.notes.append(
+                f"Consecutive-day rules look back at {len(self.p.history)} "
+                "assignments from last week's published rota."
+            )
         for rule in self.p.rules:
             if rule.status != "active":
                 continue
@@ -424,6 +439,177 @@ class RotaModel:
                     rule=rule, staff_id=staff_id,
                 )
             )
+
+    def _rule_max_consecutive_days(self, rule: Rule) -> None:
+        n = max(1, int(rule.params.get("n", 1)))
+        same_bench = rule.params.get("same_bench") is not False
+
+        # person (and bench, in same-bench mode) -> date -> matching slots
+        grouped: dict[tuple, dict[date, list[Slot]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
+        for slot in self._scoped(rule):
+            key = (slot.staff_id, slot.bench_id) if same_bench else (slot.staff_id,)
+            grouped[key][slot.work_date].append(slot)
+
+        # What each group already worked at the end of last week's published
+        # rota. Only the n days butting up against this Monday can extend a
+        # run into this week; the rest of the history cannot matter.
+        week_start = self.p.dates[0]
+        history_dates = [week_start - timedelta(days=n - i) for i in range(n)]
+        history_set = set(history_dates)
+        staff_ids = {s.id for s in self.p.staff}
+        bench_ids = {b.id for b in self.p.benches}
+        worked_before: dict[tuple, set[date]] = defaultdict(set)
+        for past in self.p.history:
+            if past.work_date not in history_set:
+                continue
+            if past.staff_id not in staff_ids or past.bench_id not in bench_ids:
+                continue
+            past_slot = Slot(past.staff_id, past.work_date, past.shift_id,
+                             past.bench_id)
+            if not matches(self.p, rule.conditions, past_slot):
+                continue
+            key = (past.staff_id, past.bench_id) if same_bench else (past.staff_id,)
+            worked_before[key].add(past.work_date)
+
+        # The dates are in order, so every slice is a run of calendar-
+        # consecutive days. A day with no matching slot contributes nothing,
+        # which is right: a day you cannot work breaks the run. History days
+        # are constants, folded into the right hand side.
+        dates = history_dates + self.p.dates
+        for key, by_date in grouped.items():
+            staff_id = key[0]
+            bench_id = key[1] if same_bench else None
+            worked = worked_before.get(key, set())
+            for start in range(len(dates) - n):
+                window = dates[start : start + n + 1]
+                already = sum(1 for d in window if d in worked)
+                if already + sum(1 for d in window if d in by_date) <= n:
+                    continue
+                counting = [s for d in window for s in by_date.get(d, [])]
+                if not counting:
+                    continue
+                # One bench per day keeps each day's sum at 0 or 1, so this is
+                # exactly "at most n of these n+1 consecutive days".
+                total = sum(self.x[s] for s in counting)
+                if rule.is_hard:
+                    self.model.Add(total <= n - already)
+                    continue
+                over = self.model.NewIntVar(
+                    0, 1, f"run[{rule.id[:8]},{staff_id[:8]},{window[0]}]"
+                )
+                self.model.Add(over >= total - (n - already))
+                who = self.p.person(staff_id).full_name
+                doing = f"is on {self.p.bench(bench_id).name}" if same_bench else "works"
+                plural = "" if n == 1 else "s"
+                breach_date = next((d for d in window if d in by_date), window[0])
+                self.soft.append(
+                    SoftTerm(
+                        over, rule.weight,
+                        lambda _v, who=who, doing=doing, n=n, plural=plural:
+                            f"{who} {doing} more than {n} day{plural} in a row",
+                        rule=rule, work_date=breach_date, staff_id=staff_id,
+                        bench_id=bench_id,
+                    )
+                )
+
+    def _rule_min_days_in_period(self, rule: Rule) -> None:
+        n = max(1, int(rule.params.get("n", 1)))
+        by_person = self._group(self._scoped(rule), "staff_id")
+
+        # A person the rule names with no matching slot at all can never meet
+        # the floor. For a hard rule that is a conflict, not a pass.
+        for staff_id in condition_people(self.p, rule):
+            if (staff_id,) in by_person:
+                continue
+            who = self.p.person(staff_id).full_name
+            if rule.is_hard:
+                self.model.Add(0 >= n)
+            self.notes.append(
+                f"Rule '{rule.name}': {who} has no eligible day it could count."
+            )
+
+        for (staff_id,), slots in by_person.items():
+            # One bench per day caps each day at 1, so ≥ n means n distinct days.
+            total = sum(self.x[s] for s in slots)
+            who = self.p.person(staff_id).full_name
+            if rule.is_hard:
+                self.model.Add(total >= n)
+                continue
+            short = self.model.NewIntVar(
+                0, n, f"short_days[{rule.id[:8]},{staff_id[:8]}]"
+            )
+            self.model.Add(total + short >= n)
+            self.soft.append(
+                SoftTerm(
+                    short, rule.weight,
+                    lambda v, who=who, n=n:
+                        f"{who} is {v} day(s) short of the {n} this rule asks for",
+                    rule=rule, staff_id=staff_id,
+                )
+            )
+
+    def _rule_must_be_together(self, rule: Rule) -> None:
+        people = condition_people(self.p, rule)
+        if len(people) < 2:
+            self.notes.append(
+                f"Rule '{rule.name}' names fewer than two people, so it does nothing."
+            )
+            return
+
+        # The person conditions say who is kept together; the rest of the
+        # tree says where and when it applies.
+        where = strip_staff_conditions(rule.conditions)
+        wanted = set(people)
+        by_person_date: dict[str, dict[date, list[Slot]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
+        for slot in self.slots:
+            if slot.staff_id in wanted and matches(self.p, where, slot):
+                by_person_date[slot.staff_id][slot.work_date].append(slot)
+
+        for a in range(len(people)):
+            for b in range(a + 1, len(people)):
+                days_a = by_person_date.get(people[a])
+                days_b = by_person_date.get(people[b])
+                if not days_a or not days_b:
+                    continue
+                for day in self.p.dates:
+                    slots_a = days_a.get(day, [])
+                    slots_b = days_b.get(day, [])
+                    if not slots_a or not slots_b:
+                        continue
+                    # Forbid "A on bench x while B works a different bench":
+                    #   x[a] + Σ x[B, elsewhere] ≤ 1  for each of A's slots.
+                    # One direction covers both people: any day they work apart
+                    # has a violated row for A's actual bench.
+                    rows = []
+                    for sa in slots_a:
+                        elsewhere = [s for s in slots_b if s.bench_id != sa.bench_id]
+                        if elsewhere:
+                            rows.append(self.x[sa] + sum(self.x[s] for s in elsewhere))
+                    if not rows:
+                        continue
+                    if rule.is_hard:
+                        for row in rows:
+                            self.model.Add(row <= 1)
+                        continue
+                    breach = self.model.NewBoolVar(
+                        f"apart[{rule.id[:8]},{people[a][:8]},{day}]"
+                    )
+                    for row in rows:
+                        self.model.Add(row <= 1).OnlyEnforceIf(breach.Not())
+                    name_a = self.p.person(people[a]).full_name
+                    name_b = self.p.person(people[b]).full_name
+                    self.soft.append(
+                        SoftTerm(
+                            breach, rule.weight,
+                            lambda _v, name_a=name_a, name_b=name_b, day=day:
+                                f"{name_a} and {name_b} are on different benches on {day:%A}",
+                            rule=rule, work_date=day,
+                        )
+                    )
 
     def _rule_not_together(self, rule: Rule) -> None:
         people = set(condition_people(self.p, rule))

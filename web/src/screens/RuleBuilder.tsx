@@ -2,22 +2,31 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ErrorNote, Loading } from "../components/Bits";
+import { buildProblem } from "../lib/buildProblem";
 import { GRADE_LABELS, GRADE_ORDER } from "../lib/format";
 import {
+  useAbsences,
   useAllRuns,
   useAssignments,
+  useAvailability,
   useBenchGroups,
+  useBenchRequirements,
   useBenches,
   useCompetencyMatrix,
+  usePins,
+  usePriorWeekHistory,
   useRules,
   useShifts,
+  useSolverSettings,
   useStaff,
 } from "../lib/queries";
 import { matchesSlot, peopleAffected, type MatchSlot } from "../lib/ruleMatch";
 import { ruleToSentence } from "../lib/ruleText";
 import { supabase } from "../lib/supabase";
 import { isGroup, type RuleAction, type RuleCondition, type RuleGroup, type RuleNode } from "../lib/types";
-import { WEEKDAY_NAMES } from "../lib/week";
+import { solveInWorker, warmSolver, type SolveResult, type SolverProblem } from "../solver";
+import { useUiStore } from "../store/useUiStore";
+import { WEEKDAY_NAMES, formatDateShort } from "../lib/week";
 
 const SUBJECTS: { value: RuleCondition["subject"]; label: string; operators: string[] }[] = [
   { value: "person", label: "Person", operators: ["is", "is not", "is one of"] },
@@ -37,7 +46,10 @@ const ACTIONS: { value: RuleAction; label: string; needsN?: boolean }[] = [
   { value: "requires_supervisor", label: "Requires a supervisor present" },
   { value: "same_bench_all_week", label: "Must stay on the same bench all week" },
   { value: "max_shifts_in_period", label: "Maximum shifts in the period", needsN: true },
+  { value: "max_consecutive_days", label: "Maximum days in a row", needsN: true },
+  { value: "min_days_in_period", label: "Minimum days in the period", needsN: true },
   { value: "not_together", label: "Never rota these together" },
+  { value: "must_be_together", label: "Always rota these together" },
 ];
 
 /* Most rules people write are variations of about eight patterns. Starting
@@ -111,6 +123,56 @@ const PRESETS: { label: string; description: string; build: () => Partial<DraftR
       conditions: { op: "all", children: [{ subject: "bench", operator: "is", values: [] }] },
     }),
   },
+  {
+    label: "Never the same bench two days running",
+    description: "Nobody repeats a bench on consecutive days.",
+    build: () => ({
+      action: "max_consecutive_days",
+      is_hard: true,
+      params: { n: 1, same_bench: true },
+      conditions: { op: "all", children: [] },
+    }),
+  },
+  {
+    label: "Rest after a heavy bench",
+    description: "Cap how many days in a row anyone does one draining bench.",
+    build: () => ({
+      action: "max_consecutive_days",
+      is_hard: false,
+      weight: 60,
+      params: { n: 2, same_bench: true },
+      conditions: { op: "all", children: [{ subject: "bench", operator: "is", values: [] }] },
+    }),
+  },
+  {
+    label: "Guaranteed training days",
+    description: "Someone must get at least N days on a bench this week.",
+    build: () => ({
+      action: "min_days_in_period",
+      is_hard: false,
+      weight: 80,
+      params: { n: 2 },
+      conditions: {
+        op: "all",
+        children: [
+          { subject: "person", operator: "is", values: [] },
+          { subject: "bench", operator: "is", values: [] },
+        ],
+      },
+    }),
+  },
+  {
+    label: "Keep a trainee with their trainer",
+    description: "Two people who share a bench on any day both are in.",
+    build: () => ({
+      action: "must_be_together",
+      is_hard: true,
+      conditions: {
+        op: "all",
+        children: [{ subject: "person", operator: "is one of", values: [] }],
+      },
+    }),
+  },
 ];
 
 interface DraftRule {
@@ -135,10 +197,52 @@ const BLANK: DraftRule = {
   scope: "global",
 };
 
+/** What a weight means in practice, because the number alone means nothing.
+ *
+ * The scale is honest about how the solver treats it: a soft rule's weight is
+ * only ever relative to the other soft rules and the objective's own terms.
+ */
+function weightLabel(weight: number): string {
+  if (weight < 25) return "a gentle preference";
+  if (weight < 50) return "prefer where possible";
+  if (weight < 75) return "a strong preference";
+  return "break only as a last resort";
+}
+
+/** Leaf conditions that still have no value: they match nothing until filled. */
+function incompleteCount(node: RuleNode): number {
+  if (isGroup(node)) {
+    return (node.children ?? []).reduce((sum, child) => sum + incompleteCount(child), 0);
+  }
+  const values = (node.values ?? []).filter((v) => String(v).trim() !== "");
+  return values.length === 0 ? 1 : 0;
+}
+
+/** What a dry run of the draft rule found, both rotas solved side by side. */
+interface DryRun {
+  draftId: string;
+  baseline: SolveResult;
+  withDraft: SolveResult;
+  moved: number;
+}
+
+/** Person-days whose bench changed, appeared or disappeared between rotas. */
+function countMoved(a: SolveResult, b: SolveResult): number {
+  const placement = (r: SolveResult) =>
+    new Map(r.assignments.map((x) => [`${x.staffId}|${x.workDate}`, x.benchId]));
+  const before = placement(a);
+  const after = placement(b);
+  let moved = 0;
+  for (const [key, bench] of before) if (after.get(key) !== bench) moved += 1;
+  for (const key of after.keys()) if (!before.has(key)) moved += 1;
+  return moved;
+}
+
 export default function RuleBuilder() {
   const { ruleId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const weekStart = useUiStore((s) => s.weekStart);
 
   const rules = useRules();
   const staff = useStaff();
@@ -146,6 +250,16 @@ export default function RuleBuilder() {
   const groups = useBenchGroups();
   const shifts = useShifts();
   const matrix = useCompetencyMatrix();
+  const requirements = useBenchRequirements();
+  const availability = useAvailability();
+  const absences = useAbsences();
+  const solverSettings = useSolverSettings();
+  const pins = usePins(weekStart);
+  const planAhead =
+    Number(
+      (solverSettings.data ?? []).find((s) => s.key === "history_from_unpublished")?.value ?? 0,
+    ) === 1;
+  const priorHistory = usePriorWeekHistory(weekStart, planAhead);
   const runs = useAllRuns(1);
   const lastRun = runs.data?.[0];
   const lastAssignments = useAssignments(lastRun?.id);
@@ -154,6 +268,24 @@ export default function RuleBuilder() {
   const [showPresets, setShowPresets] = useState(!ruleId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [dryRun, setDryRun] = useState<DryRun | null>(null);
+  const [dryRunError, setDryRunError] = useState<string | null>(null);
+
+  // Compile the solver wasm while the rule is still being written, so the
+  // first Test does not pay for it.
+  useEffect(() => {
+    warmSolver();
+  }, []);
+
+  // A dry run describes one exact draft; any edit makes it stale.
+  const draftKey = JSON.stringify([
+    draft.action, draft.params, draft.conditions, draft.is_hard, draft.weight,
+  ]);
+  useEffect(() => {
+    setDryRun(null);
+    setDryRunError(null);
+  }, [draftKey, weekStart]);
 
   const existing = rules.data?.find((r) => r.id === ruleId);
   useEffect(() => {
@@ -278,10 +410,78 @@ export default function RuleBuilder() {
     navigate("/rules");
   }
 
+  /* The dry run answers the question the impact figures cannot: not "what
+     does this rule match" but "what would the rota do about it". Two solves,
+     with the rule and without, so the difference is attributable. */
+  async function testRule() {
+    setTesting(true);
+    setDryRunError(null);
+    setDryRun(null);
+    try {
+      const draftId = ruleId ?? "draft-rule";
+      const baselineProblem = buildProblem({
+        weekStart,
+        shifts: shifts.data ?? [],
+        benches: benches.data ?? [],
+        requirements: requirements.data ?? [],
+        staff: staff.data ?? [],
+        competencies: matrix.data ?? [],
+        availability: availability.data ?? [],
+        absences: absences.data ?? [],
+        rules: (rules.data ?? []).filter((r) => r.id !== ruleId),
+        pins: pins.data ?? [],
+        history: priorHistory.data?.assignments ?? [],
+        settings: solverSettings.data ?? [],
+      });
+      const withDraftProblem: SolverProblem = {
+        ...baselineProblem,
+        rules: [
+          ...baselineProblem.rules,
+          {
+            id: draftId,
+            name: draft.name || "This draft rule",
+            action: draft.action,
+            params: draft.params,
+            conditions: draft.conditions,
+            isHard: draft.is_hard,
+            weight: draft.weight,
+            plainEnglish: sentence,
+          },
+        ],
+      };
+      // Sequential on purpose: the worker runs one solve at a time.
+      const baseline = await solveInWorker(baselineProblem);
+      const withDraft = await solveInWorker(withDraftProblem);
+      setDryRun({ draftId, baseline, withDraft, moved: countMoved(baseline, withDraft) });
+    } catch (testError) {
+      setDryRunError(testError instanceof Error ? testError.message : String(testError));
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  async function remove() {
+    if (!ruleId) return;
+    if (!window.confirm("Delete this rule? Past runs keep the snapshot they solved with.")) {
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const { error } = await supabase.from("rule").delete().eq("id", ruleId);
+    setSaving(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["rule"] });
+    navigate("/rules");
+  }
+
   if (rules.isLoading || staff.isLoading) return <Loading what="the builder" />;
   if (rules.error) return <ErrorNote error={rules.error} />;
 
   const needsN = ACTIONS.find((a) => a.value === draft.action)?.needsN;
+  const incomplete = incompleteCount(draft.conditions);
 
   return (
     <div className="builder">
@@ -392,6 +592,21 @@ export default function RuleBuilder() {
                   }
                 />
               )}
+              {draft.action === "max_consecutive_days" && (
+                <select
+                  value={draft.params.same_bench === false ? "any" : "same"}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      params: { ...draft.params, same_bench: e.target.value === "same" },
+                    })
+                  }
+                  aria-label="What counts as a repeat"
+                >
+                  <option value="same">counting the same bench</option>
+                  <option value="any">counting any matching bench</option>
+                </select>
+              )}
               {draft.action === "requires_supervisor" && (
                 <select
                   value={String(draft.params.supervisor_level ?? "trainer")}
@@ -437,6 +652,7 @@ export default function RuleBuilder() {
                     aria-label="Weight"
                   />
                   <span className="mono">{draft.weight}</span>
+                  <span className="muted">{weightLabel(draft.weight)}</span>
                 </>
               )}
             </div>
@@ -457,6 +673,14 @@ export default function RuleBuilder() {
               rules people cannot verify. */}
           <aside className="builder__preview">
             <p className="builder__sentence">{sentence || "Nothing to preview yet."}</p>
+            {incomplete > 0 && (
+              <p className="builder__todo">
+                {incomplete === 1
+                  ? "One condition has no value yet"
+                  : `${incomplete} conditions have no value yet`}
+                {" — "}the highlighted boxes match nothing until they are filled in.
+              </p>
+            )}
             <dl className="builder__impact">
               <div>
                 <dt>People</dt>
@@ -479,8 +703,28 @@ export default function RuleBuilder() {
                 </dd>
               </div>
             </dl>
+            <div className="builder__dryrun">
+              <button
+                type="button"
+                className="btn"
+                onClick={testRule}
+                disabled={testing || saving || !sentence || incomplete > 0}
+              >
+                {testing
+                  ? "Solving twice…"
+                  : `Test against the week of ${formatDateShort(weekStart)}`}
+              </button>
+              {dryRunError && <p className="login__error">{dryRunError}</p>}
+              {dryRun && <DryRunReport dryRun={dryRun} />}
+            </div>
+
             {error && <p className="login__error">{error}</p>}
             <div className="builder__save">
+              {ruleId && (
+                <button type="button" className="btn btn--quiet" onClick={remove} disabled={saving}>
+                  Delete
+                </button>
+              )}
               <button type="button" className="btn" onClick={() => navigate("/rules")}>
                 Cancel
               </button>
@@ -488,13 +732,71 @@ export default function RuleBuilder() {
                 type="button"
                 className="btn btn--primary"
                 onClick={save}
-                disabled={saving || !sentence}
+                disabled={saving || !sentence || incomplete > 0}
               >
                 {saving ? "Saving…" : ruleId ? "Save rule" : "Create rule"}
               </button>
             </div>
           </aside>
         </>
+      )}
+    </div>
+  );
+}
+
+function outcomePhrase(result: SolveResult): string {
+  switch (result.status) {
+    case "solved":
+      return "solves with no soft breaches";
+    case "solved_with_breaches": {
+      const n = result.breaches.length;
+      return `solves with ${n} soft ${n === 1 ? "breach" : "breaches"}`;
+    }
+    case "infeasible":
+      return "has no valid rota";
+    default:
+      return "hit a solver error";
+  }
+}
+
+function DryRunReport({ dryRun }: { dryRun: DryRun }) {
+  const { draftId, baseline, withDraft, moved } = dryRun;
+  const draftBreaches = withDraft.breaches.filter((b) => b.ruleId === draftId);
+  const bothSolved =
+    ["solved", "solved_with_breaches"].includes(baseline.status) &&
+    ["solved", "solved_with_breaches"].includes(withDraft.status);
+
+  return (
+    <div className="dryrun">
+      <p>
+        Without this rule the week {outcomePhrase(baseline)}. With it, the week{" "}
+        {outcomePhrase(withDraft)}
+        {draftBreaches.length > 0 &&
+          `, ${draftBreaches.length} of them from this rule`}
+        .
+      </p>
+      {withDraft.status === "infeasible" && (
+        <p className="dryrun__bad">
+          {withDraft.infeasibleReport?.summary ??
+            "This rule cannot hold this week as things stand."}
+        </p>
+      )}
+      {bothSolved && (
+        <p className="muted">
+          {moved === 0
+            ? "The rota does not change."
+            : `${moved} ${moved === 1 ? "placement changes" : "placements change"}.`}
+        </p>
+      )}
+      {draftBreaches.length > 0 && (
+        <ul className="dryrun__breaches">
+          {draftBreaches.slice(0, 4).map((b, i) => (
+            <li key={i}>{b.detail}</li>
+          ))}
+          {draftBreaches.length > 4 && (
+            <li className="muted">and {draftBreaches.length - 4} more.</li>
+          )}
+        </ul>
       )}
     </div>
   );
@@ -618,6 +920,7 @@ function ConditionRow({
         <>
           <input
             type="date"
+            className={String(node.values[0] ?? "") ? undefined : "is-unfilled"}
             value={String(node.values[0] ?? "")}
             onChange={(e) => onChange({ ...node, values: [e.target.value, node.values[1] ?? ""] })}
           />
@@ -629,18 +932,43 @@ function ConditionRow({
             />
           )}
         </>
+      ) : multiple ? (
+        /* Chips, not a ctrl-click multi-select: every choice stays visible and
+           one click toggles it, which is what "is one of" actually needs. */
+        <div
+          className={`chips${node.values.length ? "" : " is-unfilled"}`}
+          role="group"
+          aria-label="Values"
+        >
+          {options.map((option) => {
+            const on = node.values.map(String).includes(option.value);
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`chips__chip${on ? " is-on" : ""}`}
+                aria-pressed={on}
+                onClick={() =>
+                  onChange({
+                    ...node,
+                    values: on
+                      ? node.values.filter((v) => String(v) !== option.value)
+                      : [...node.values, option.value],
+                  })
+                }
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
       ) : (
         <select
-          multiple={multiple}
-          value={multiple ? node.values.map(String) : String(node.values[0] ?? "")}
-          onChange={(e) => {
-            const selected = multiple
-              ? Array.from(e.target.selectedOptions).map((o) => o.value)
-              : [e.target.value];
-            onChange({ ...node, values: selected });
-          }}
+          className={String(node.values[0] ?? "") ? undefined : "is-unfilled"}
+          value={String(node.values[0] ?? "")}
+          onChange={(e) => onChange({ ...node, values: [e.target.value] })}
         >
-          {!multiple && <option value="">Choose…</option>}
+          <option value="">Choose…</option>
           {options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}

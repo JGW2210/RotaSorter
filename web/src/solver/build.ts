@@ -11,10 +11,17 @@
  */
 
 import type { InfeasibleReport } from "../lib/types";
-import { WEEKDAY_NAMES, isoWeekday } from "../lib/week";
+import { WEEKDAY_NAMES, addDays, isoWeekday } from "../lib/week";
 import { MipModel, type Term } from "./model";
 import { ProblemIndex } from "./problem";
-import { conditionPeople, groupInScope, matches, scopeIndices, scopeSlots } from "./rules";
+import {
+  conditionPeople,
+  groupInScope,
+  matches,
+  scopeIndices,
+  scopeSlots,
+  stripStaffConditions,
+} from "./rules";
 import {
   DEFAULT_SETTINGS,
   groupKey,
@@ -225,6 +232,16 @@ export function buildModel(problem: SolverProblem, options: BuildOptions = {}): 
     return out;
   };
 
+  if (
+    (problem.history ?? []).length &&
+    problem.rules.some((r) => r.action === "max_consecutive_days")
+  ) {
+    notes.push(
+      `Consecutive-day rules look back at ${problem.history!.length} assignments ` +
+        "from last week's published rota.",
+    );
+  }
+
   for (const original of problem.rules) {
     const rule: SolverRule =
       options.softenRules && original.isHard
@@ -416,6 +433,114 @@ export function buildModel(problem: SolverProblem, options: BuildOptions = {}): 
         break;
       }
 
+      case "max_consecutive_days": {
+        const n = Math.max(1, Number(rule.params?.n ?? 1));
+        const sameBench = rule.params?.same_bench !== false;
+        // person (and bench, in same-bench mode) -> date -> slot indices
+        const groups = new Map<string, Map<string, number[]>>();
+        for (const i of scopeIndices(index, rule, slots)) {
+          const slot = slots[i];
+          const k = sameBench ? `${slot.staffId}|${slot.benchId}` : slot.staffId;
+          const byDate = groups.get(k) ?? new Map<string, number[]>();
+          byDate.set(slot.workDate, [...(byDate.get(slot.workDate) ?? []), i]);
+          groups.set(k, byDate);
+        }
+
+        // What each group already worked at the end of last week's published
+        // rota. Only the n days butting up against this Monday can extend a
+        // run into this week; the rest of the history cannot matter.
+        const historyDates = Array.from({ length: n }, (_, i) =>
+          addDays(index.dates[0], i - n),
+        );
+        const historySet = new Set(historyDates);
+        const staffIds = new Set(problem.staff.map((s) => s.id));
+        const benchIds = new Set(problem.benches.map((b) => b.id));
+        const workedBefore = new Map<string, Set<string>>();
+        for (const past of problem.history ?? []) {
+          if (!historySet.has(past.workDate)) continue;
+          if (!staffIds.has(past.staffId) || !benchIds.has(past.benchId)) continue;
+          if (!matches(index, rule.conditions, past)) continue;
+          const k = sameBench ? `${past.staffId}|${past.benchId}` : past.staffId;
+          const set = workedBefore.get(k) ?? new Set<string>();
+          set.add(past.workDate);
+          workedBefore.set(k, set);
+        }
+
+        // The dates are in order, so every slice is a run of calendar-
+        // consecutive days. A day with no matching slot contributes nothing,
+        // which is right: a day you cannot work breaks the run. History days
+        // are constants, folded into the right hand side.
+        const dates = [...historyDates, ...index.dates];
+        for (const [key, byDate] of groups) {
+          const [staffId, benchId] = key.split("|");
+          const worked = workedBefore.get(key) ?? new Set<string>();
+          for (let start = 0; start + n + 1 <= dates.length; start++) {
+            const window = dates.slice(start, start + n + 1);
+            const already = window.filter((d) => worked.has(d)).length;
+            if (already + window.filter((d) => byDate.has(d)).length <= n) continue;
+            const counting = window.flatMap((d) => byDate.get(d) ?? []);
+            if (!counting.length) continue;
+            // One bench per day keeps each day's sum at 0 or 1, so this is
+            // exactly "at most n of these n+1 consecutive days".
+            const terms = MipModel.sum(vars(counting));
+            if (rule.isHard) {
+              model.add(terms, "<=", n - already);
+            } else {
+              const over = model.addContinuous(0, 1);
+              model.add([...terms, { v: over, c: -1 }], "<=", n - already);
+              const who = index.staff(staffId).fullName;
+              const doing = sameBench ? `is on ${index.bench(benchId).name}` : "works";
+              addSoft(over, rule.weight,
+                () => `${who} ${doing} more than ${n} day${n === 1 ? "" : "s"} in a row`,
+                rule, {
+                  workDate: window.find((d) => byDate.has(d)) ?? window[0],
+                  staffId,
+                  benchId: sameBench ? benchId : null,
+                });
+            }
+          }
+        }
+        break;
+      }
+
+      case "min_days_in_period": {
+        const n = Math.max(1, Number(rule.params?.n ?? 1));
+        const byPerson = new Map<string, number[]>();
+        for (const i of scopeIndices(index, rule, slots)) {
+          const staffId = slots[i].staffId;
+          byPerson.set(staffId, [...(byPerson.get(staffId) ?? []), i]);
+        }
+
+        // A person the rule names with no matching slot at all can never meet
+        // the floor. For a hard rule that is a conflict, not a pass.
+        for (const staffId of conditionPeople(index, rule)) {
+          if (byPerson.has(staffId)) continue;
+          const who = index.staff(staffId).fullName;
+          if (rule.isHard) {
+            model.trivallyInfeasible ??=
+              `"${rule.name}" needs ${who} on ${n} day(s), and no day this week allows any.`;
+          } else {
+            notes.push(`Rule "${rule.name}": ${who} has no eligible day it could count.`);
+          }
+        }
+
+        for (const [staffId, counting] of byPerson) {
+          // One bench per day caps each day at 1, so ≥ n means n distinct days.
+          const terms = MipModel.sum(vars(counting));
+          const who = index.staff(staffId).fullName;
+          if (rule.isHard) {
+            model.add(terms, ">=", n);
+          } else {
+            const short = model.addContinuous(0, n);
+            model.add([...terms, { v: short, c: 1 }], ">=", n);
+            addSoft(short, rule.weight,
+              (value) => `${who} is ${value} day(s) short of the ${n} this rule asks for`,
+              rule, { staffId });
+          }
+        }
+        break;
+      }
+
       case "not_together": {
         const people = new Set(conditionPeople(index, rule));
         if (people.size < 2) {
@@ -436,6 +561,68 @@ export function buildModel(problem: SolverProblem, options: BuildOptions = {}): 
             addSoft(over, rule.weight,
               () => `people this rule keeps apart are together on ${place}`,
               rule, { workDate: date, shiftId, benchId });
+          }
+        }
+        break;
+      }
+
+      case "must_be_together": {
+        const people = conditionPeople(index, rule);
+        if (people.length < 2) {
+          notes.push(`Rule "${rule.name}" names fewer than two people, so it does nothing.`);
+          break;
+        }
+        // The person conditions say who is kept together; the rest of the
+        // tree says where and when it applies.
+        const where = stripStaffConditions(rule.conditions);
+        const wanted = new Set(people);
+        // person -> date -> slot indices the where-tree matches
+        const byPersonDate = new Map<string, Map<string, number[]>>();
+        slots.forEach((slot, i) => {
+          if (!wanted.has(slot.staffId) || !matches(index, where, slot)) return;
+          const byDate = byPersonDate.get(slot.staffId) ?? new Map<string, number[]>();
+          byDate.set(slot.workDate, [...(byDate.get(slot.workDate) ?? []), i]);
+          byPersonDate.set(slot.staffId, byDate);
+        });
+
+        for (let a = 0; a < people.length; a++) {
+          for (let b = a + 1; b < people.length; b++) {
+            const daysA = byPersonDate.get(people[a]);
+            const daysB = byPersonDate.get(people[b]);
+            if (!daysA || !daysB) continue;
+            for (const date of index.dates) {
+              const ia = daysA.get(date) ?? [];
+              const ib = daysB.get(date) ?? [];
+              if (!ia.length || !ib.length) continue;
+              // Forbid "A on bench x while B works a different bench":
+              //   x[a] + Σ x[B, elsewhere] ≤ 1  for each of A's slots.
+              // One direction covers both people: any day they work apart has
+              // a violated row for A's actual bench.
+              const rows: Term[][] = [];
+              for (const i of ia) {
+                const elsewhere = ib.filter((j) => slots[j].benchId !== slots[i].benchId);
+                if (!elsewhere.length) continue;
+                rows.push([
+                  { v: slotVar[i], c: 1 },
+                  ...vars(elsewhere).map((v) => ({ v, c: 1 })),
+                ]);
+              }
+              if (!rows.length) continue;
+              if (rule.isHard) {
+                for (const row of rows) model.add(row, "<=", 1);
+              } else {
+                const breach = model.addBinary();
+                for (const row of rows) {
+                  model.add([...row, { v: breach, c: -1 }], "<=", 1);
+                }
+                const nameA = index.staff(people[a]).fullName;
+                const nameB = index.staff(people[b]).fullName;
+                const dayName = WEEKDAY_NAMES[isoWeekday(date) - 1];
+                addSoft(breach, rule.weight,
+                  () => `${nameA} and ${nameB} are on different benches on ${dayName}`,
+                  rule, { workDate: date });
+              }
+            }
           }
         }
         break;

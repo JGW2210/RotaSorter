@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import (
+    DEFAULT_SETTINGS,
     Absence,
     Availability,
     Bench,
@@ -122,7 +123,14 @@ def seeded_problem(week_start: date | None = None) -> Problem:
         for r in seed.RULES
     ]
 
-    settings = {key: value for key, value, _l, _d, _o in seed.SOLVER_SETTINGS}
+    # Only the solver's own settings: the seed also carries app behaviour
+    # toggles (publishing order, history source) that are no input to the
+    # model and must not leak into the cross-check fixtures.
+    settings = {
+        key: value
+        for key, value, _l, _d, _o in seed.SOLVER_SETTINGS
+        if key in DEFAULT_SETTINGS
+    }
 
     return Problem(
         week_start=week,
