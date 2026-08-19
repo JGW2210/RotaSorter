@@ -7,7 +7,7 @@ declare
   expected constant jsonb := '{
     "shift": 2, "bench_group": 10, "bench": 20, "competency_document": 51,
     "bench_shift_requirement": 22, "staff": 20, "absence": 8,
-    "competency": 201, "rule": 8, "solver_setting": 7
+    "competency": 201, "rule": 8, "solver_setting": 9
   }'::jsonb;
   t text;
   want int;

@@ -116,6 +116,8 @@ insert into solver_setting (key, value, label, description, sort_order) values
   ('weight_trainee_placement', '25'::jsonb, 'Trainee placement', 'Extra cost of leaving a trainee off the rota, on top of the idle cost.', 3),
   ('weight_soft_breach_scale', '1'::jsonb, 'Soft rule scale', 'Multiplier applied to each soft rule''s own weight.', 4),
   ('max_solve_seconds', '60'::jsonb, 'Solve time limit', 'Seconds the CP-SAT solver may spend before returning its best answer.', 5),
-  ('random_seed', '20260914'::jsonb, 'Random seed', 'Fixed so the same inputs give the same rota.', 6);
+  ('random_seed', '20260914'::jsonb, 'Random seed', 'Fixed so the same inputs give the same rota.', 6),
+  ('history_from_unpublished', '0'::jsonb, 'Plan against unpublished weeks', 'When last week has no published rota, count its latest solved run instead. Runs planned this way cannot be published until that week is.', 100),
+  ('allow_publish_out_of_order', '0'::jsonb, 'Allow out-of-order publishing', 'Publish a week even though the rota it was planned against has not been published. The runs it counted may no longer be what that week gets.', 101);
 
 commit;

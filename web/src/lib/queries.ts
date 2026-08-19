@@ -226,12 +226,25 @@ export const usePins = (weekStart: string) =>
     },
   });
 
-/** Last week's published assignments, so rules that count runs of days can
- *  see across the Sunday-to-Monday boundary. Empty when nothing is published. */
-export const usePriorWeekHistory = (weekStart: string) =>
+/** Last week's rota, so rules that count runs of days can see across the
+ *  Sunday-to-Monday boundary.
+ *
+ *  The published rota is the truth when there is one. With
+ *  `includeUnpublished` (the "plan against unpublished weeks" setting) the
+ *  latest solved run stands in for it, and the caller records which run was
+ *  leaned on so publishing can stay in order.
+ */
+export interface PriorWeekHistory {
+  weekStart: string;
+  runId: string | null;
+  published: boolean;
+  assignments: Assignment[];
+}
+
+export const usePriorWeekHistory = (weekStart: string, includeUnpublished = false) =>
   useQuery({
-    queryKey: ["prior_week_history", weekStart],
-    queryFn: async () => {
+    queryKey: ["prior_week_history", weekStart, includeUnpublished],
+    queryFn: async (): Promise<PriorWeekHistory> => {
       const prior = addWeeks(weekStart, -1);
       const { data: week, error } = await supabase
         .from("rota_week")
@@ -239,13 +252,29 @@ export const usePriorWeekHistory = (weekStart: string) =>
         .eq("week_start", prior)
         .maybeSingle();
       if (error) throw new Error(error.message);
-      if (!week?.published_run_id) return [] as Assignment[];
+
+      let runId = (week?.published_run_id as string | null) ?? null;
+      let published = Boolean(runId);
+      if (!runId && includeUnpublished) {
+        const { data: latest, error: runError } = await supabase
+          .from("rota_run")
+          .select("id")
+          .eq("week_start", prior)
+          .in("status", ["solved", "solved_with_breaches"])
+          .order("requested_at", { ascending: false })
+          .limit(1);
+        if (runError) throw new Error(runError.message);
+        runId = latest?.[0]?.id ?? null;
+        published = false;
+      }
+      if (!runId) return { weekStart: prior, runId: null, published: false, assignments: [] };
+
       const { data, error: assignmentError } = await supabase
         .from("assignment")
         .select("*")
-        .eq("run_id", week.published_run_id);
+        .eq("run_id", runId);
       if (assignmentError) throw new Error(assignmentError.message);
-      return (data ?? []) as Assignment[];
+      return { weekStart: prior, runId, published, assignments: (data ?? []) as Assignment[] };
     },
   });
 

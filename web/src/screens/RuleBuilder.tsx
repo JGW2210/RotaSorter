@@ -255,7 +255,11 @@ export default function RuleBuilder() {
   const absences = useAbsences();
   const solverSettings = useSolverSettings();
   const pins = usePins(weekStart);
-  const priorHistory = usePriorWeekHistory(weekStart);
+  const planAhead =
+    Number(
+      (solverSettings.data ?? []).find((s) => s.key === "history_from_unpublished")?.value ?? 0,
+    ) === 1;
+  const priorHistory = usePriorWeekHistory(weekStart, planAhead);
   const runs = useAllRuns(1);
   const lastRun = runs.data?.[0];
   const lastAssignments = useAssignments(lastRun?.id);
@@ -426,7 +430,7 @@ export default function RuleBuilder() {
         absences: absences.data ?? [],
         rules: (rules.data ?? []).filter((r) => r.id !== ruleId),
         pins: pins.data ?? [],
-        history: priorHistory.data ?? [],
+        history: priorHistory.data?.assignments ?? [],
         settings: solverSettings.data ?? [],
       });
       const withDraftProblem: SolverProblem = {

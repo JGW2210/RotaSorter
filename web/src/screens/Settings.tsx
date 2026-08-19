@@ -5,6 +5,30 @@ import { useShifts, useSolverSettings } from "../lib/queries";
 import { supabase } from "../lib/supabase";
 import { useUiStore } from "../store/useUiStore";
 
+/* Behaviour toggles, kept out of the weights grid: a 0/1 rendered as a number
+   input reads like a weight, and these are decisions, not trade-offs. Labels
+   and descriptions live here too, so the toggles work even before migration
+   0006 has seeded their rows. */
+const PLANNING_TOGGLES = [
+  {
+    key: "history_from_unpublished",
+    label: "Plan against unpublished weeks",
+    description:
+      "When last week has no published rota, count its latest solved run instead. " +
+      "Runs planned this way cannot be published until that week is.",
+    sort_order: 100,
+  },
+  {
+    key: "allow_publish_out_of_order",
+    label: "Allow out-of-order publishing",
+    description:
+      "Publish a week even though the rota it was planned against has not been " +
+      "published. The runs it counted may no longer be what that week gets.",
+    sort_order: 101,
+  },
+];
+const PLANNING_KEYS = new Set(PLANNING_TOGGLES.map((t) => t.key));
+
 export default function Settings() {
   const shifts = useShifts();
   const settings = useSolverSettings();
@@ -19,6 +43,19 @@ export default function Settings() {
     await queryClient.invalidateQueries({ queryKey: ["solver_setting"] });
     setSaving(null);
   }
+
+  async function saveToggle(toggle: (typeof PLANNING_TOGGLES)[number], on: boolean) {
+    setSaving(toggle.key);
+    await supabase
+      .from("solver_setting")
+      .upsert({ ...toggle, value: on ? 1 : 0 }, { onConflict: "key" });
+    await queryClient.invalidateQueries({ queryKey: ["solver_setting"] });
+    setSaving(null);
+  }
+
+  const weights = (settings.data ?? []).filter((s) => !PLANNING_KEYS.has(s.key));
+  const toggleValue = (key: string) =>
+    Number((settings.data ?? []).find((s) => s.key === key)?.value ?? 0) === 1;
 
   if (shifts.error) return <ErrorNote error={shifts.error} />;
   if (shifts.isLoading) return <Loading what="settings" />;
@@ -65,7 +102,7 @@ export default function Settings() {
           people.
         </p>
         <div className="settings-grid">
-          {(settings.data ?? []).map((setting) => (
+          {weights.map((setting) => (
             <Field key={setting.key} label={setting.label ?? setting.key} hint={setting.description ?? undefined}>
               <input
                 type="number"
@@ -77,6 +114,31 @@ export default function Settings() {
                 }}
               />
             </Field>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel title="Planning ahead">
+        <p className="muted">
+          Rules that count runs of days — "never the same bench two days
+          running" — look at last week's rota to catch a run that crosses the
+          weekend. By default only a published rota counts, and weeks publish
+          in order.
+        </p>
+        <div className="stack">
+          {PLANNING_TOGGLES.map((toggle) => (
+            <label key={toggle.key} className="checkbox setting-toggle">
+              <input
+                type="checkbox"
+                checked={toggleValue(toggle.key)}
+                disabled={saving === toggle.key}
+                onChange={(e) => void saveToggle(toggle, e.target.checked)}
+              />
+              <span>
+                <span className="setting-toggle__label">{toggle.label}</span>
+                <span className="setting-toggle__hint">{toggle.description}</span>
+              </span>
+            </label>
           ))}
         </div>
       </Panel>

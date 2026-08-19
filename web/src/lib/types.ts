@@ -256,6 +256,8 @@ export interface RotaRun {
   solver_version: string | null;
   worker_ref: string | null;
   log: string | null;
+  /** The prior-week run this run was planned against, when one was counted. */
+  history_run_id: string | null;
 }
 
 export interface Assignment {

@@ -12,8 +12,19 @@ import type { RotaRun } from "./types";
 export async function persistRun(
   problem: SolverProblem,
   result: SolveResult,
-  meta: { requestedBy: string | null; requestedByName: string | null },
+  meta: {
+    requestedBy: string | null;
+    requestedByName: string | null;
+    /** The prior-week run whose assignments fed problem.history, if any. */
+    historyRunId?: string | null;
+  },
 ): Promise<RotaRun> {
+  // Provenance is only worth recording when the history could actually bind:
+  // an inert history must not hold this week's publication hostage.
+  const historyMattered =
+    (problem.history ?? []).length > 0 &&
+    problem.rules.some((rule) => rule.action === "max_consecutive_days");
+
   const { data: run, error } = await supabase
     .from("rota_run")
     .insert({
@@ -41,6 +52,7 @@ export async function persistRun(
       })),
       solver_version: SOLVER_VERSION,
       log: result.log || null,
+      history_run_id: historyMattered ? (meta.historyRunId ?? null) : null,
     })
     .select()
     .single();

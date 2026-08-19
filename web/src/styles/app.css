@@ -45,10 +45,10 @@
   display: block;
   width: 100%;
   text-align: left;
-  padding: var(--space-3) var(--space-5);
+  padding: 7px var(--space-5);
   color: var(--rail-ink);
   font-size: var(--text-base);
-  border-left: 2px solid transparent;
+  border-left: 3px solid transparent;
   background: none;
   border-top: 0;
   border-right: 0;
@@ -66,7 +66,7 @@
   color: var(--rail-ink-strong);
   background: var(--rail-active);
   border-left-color: var(--accent);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .rail__foot {
@@ -132,8 +132,22 @@
 
 .content {
   overflow: auto;
-  padding: var(--space-5);
+  padding: var(--space-6) var(--space-7) var(--space-7);
   min-width: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Wide monitors: tables may run wide, but never wall to wall, and anything
+   prose-shaped stops at a readable measure. Grids (the rota, the matrix) are
+   the product itself and keep the full width. */
+.content > .toolbar,
+.content > .table-wrap,
+.content > .notice { max-width: var(--content-max); }
+.detail { max-width: var(--reading-max); }
+
+@media (max-width: 900px) {
+  .content { padding: var(--space-5); }
 }
 
 /* ------------------------------------------------------- week selector -- */
@@ -145,8 +159,8 @@
 }
 
 .week-selector__step {
-  width: 24px;
-  height: 24px;
+  width: var(--control-height);
+  height: var(--control-height);
   border: 1px solid var(--border);
   background: var(--surface-raised);
   border-radius: var(--radius);
@@ -154,14 +168,17 @@
   line-height: 1;
 }
 
+.week-selector__step:hover { background: var(--surface-sunken); }
+
 .week-selector__label {
   position: relative;
   display: inline-flex;
   align-items: center;
+  min-height: var(--control-height);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-raised);
-  padding: 3px var(--space-4);
+  padding: 1px var(--space-4);
   font-weight: 500;
   cursor: pointer;
 }
@@ -185,16 +202,23 @@
 /* -------------------------------------------------------------- bits ---- */
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
   border: 1px solid var(--border-strong);
   background: var(--surface-raised);
   color: var(--ink);
   border-radius: var(--radius);
-  padding: 3px var(--space-4);
+  padding: 1px var(--space-5);
   cursor: pointer;
   font-size: var(--text-base);
   white-space: nowrap;
-  transition: background 100ms ease;
+  transition: background 100ms ease, border-color 100ms ease;
 }
+
+a.btn:hover { text-decoration: none; }
 
 .btn:hover:not(:disabled) {
   background: var(--surface-sunken);
@@ -208,7 +232,7 @@
 .btn--primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
   font-weight: 500;
 }
 
@@ -220,6 +244,7 @@
   border-color: transparent;
   background: none;
   color: var(--ink-muted);
+  min-height: 0;
   padding: 2px var(--space-3);
 }
 
@@ -229,9 +254,11 @@
 }
 
 .btn--link {
+  display: inline;
   border: 0;
   background: none;
   color: var(--accent);
+  min-height: 0;
   padding: 0;
   cursor: pointer;
   text-align: left;
@@ -246,6 +273,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-5);
+  box-shadow: var(--shadow-card);
 }
 
 .panel__head {
@@ -255,7 +283,11 @@
   gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--border);
+  background: var(--surface-inset);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
+
+.panel__head h2 { font-size: var(--text-md); }
 
 .panel__body {
   padding: var(--space-5);
@@ -274,7 +306,7 @@
   align-items: center;
   gap: var(--space-4);
   flex-wrap: wrap;
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .toolbar__count {
@@ -309,13 +341,15 @@ input[type="email"],
 input[type="password"],
 input[type="number"],
 input[type="date"],
+input[type="search"],
 select,
 textarea {
   border: 1px solid var(--border-strong);
   background: var(--surface-raised);
   border-radius: var(--radius);
-  padding: 3px var(--space-3);
+  padding: 2px var(--space-3);
   min-width: 0;
+  min-height: var(--control-height);
 }
 
 .checkbox,
@@ -382,6 +416,16 @@ textarea {
   gap: var(--space-5);
 }
 
+.setting-toggle { align-items: flex-start; }
+.setting-toggle input { margin-top: 3px; }
+.setting-toggle__label { display: block; font-weight: 500; }
+.setting-toggle__hint {
+  display: block;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  max-width: 60ch;
+}
+
 .empty,
 .loading,
 .boot {
@@ -389,6 +433,19 @@ textarea {
   padding: var(--space-7);
   color: var(--ink-muted);
 }
+
+/* Empty states are an invitation, not an error: a quiet dashed card with the
+   next step inside it, rather than text floating on the page. */
+.empty {
+  max-width: 480px;
+  margin: var(--space-7) auto;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-inset);
+}
+
+.empty h3 { color: var(--ink); margin-bottom: var(--space-3); }
+.empty .btn { margin-top: var(--space-3); }
 
 .boot {
   display: grid;
@@ -449,7 +506,25 @@ textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
 }
+
+.table-wrap::-webkit-scrollbar,
+.grid-wrap::-webkit-scrollbar,
+.content::-webkit-scrollbar { width: 10px; height: 10px; }
+.table-wrap::-webkit-scrollbar-thumb,
+.grid-wrap::-webkit-scrollbar-thumb,
+.content::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.table-wrap::-webkit-scrollbar-track,
+.grid-wrap::-webkit-scrollbar-track,
+.content::-webkit-scrollbar-track { background: transparent; }
 
 .table {
   border-collapse: collapse;
@@ -460,10 +535,12 @@ textarea {
 .table th,
 .table td {
   text-align: left;
-  padding: var(--cell-pad) var(--space-4);
+  padding: calc(var(--cell-pad) + 2px) var(--space-5);
   border-bottom: 1px solid var(--grid-line);
-  vertical-align: top;
+  vertical-align: middle;
 }
+
+.table tbody tr:last-child td { border-bottom: 0; }
 
 .table thead th {
   position: sticky;
@@ -611,7 +688,8 @@ button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1p
 .segmented button {
   border: 0;
   background: var(--surface-raised);
-  padding: 3px var(--space-4);
+  min-height: calc(var(--control-height) - 2px);
+  padding: 0 var(--space-4);
   cursor: pointer;
   font-size: var(--text-base);
   color: var(--ink-muted);
@@ -801,6 +879,7 @@ button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1p
   padding: var(--space-3) var(--space-4);
   background: var(--surface-raised);
   font-size: var(--text-base);
+  box-shadow: var(--shadow-card);
 }
 
 .solve-status--ok { border-color: var(--signal-ok-line); background: var(--signal-ok-soft); }
@@ -1005,6 +1084,7 @@ button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1p
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: var(--space-5);
   align-items: start;
+  max-width: 1280px;
 }
 
 .builder__presets { grid-column: 1 / -1; }
@@ -1025,6 +1105,7 @@ button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1p
   border-radius: var(--radius-lg);
   padding: var(--space-4);
   cursor: pointer;
+  box-shadow: var(--shadow-card);
 }
 
 .preset:hover { border-color: var(--accent); background: var(--accent-soft); }
@@ -1038,6 +1119,7 @@ button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1p
   padding: var(--space-5);
   display: grid;
   gap: var(--space-4);
+  box-shadow: var(--shadow-card);
 }
 
 .builder__row {
@@ -1092,13 +1174,14 @@ button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1p
 
 .builder__preview {
   position: sticky;
-  top: 0;
+  top: var(--space-4);
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
   display: grid;
   gap: var(--space-4);
+  box-shadow: var(--shadow-card);
 }
 
 .builder__sentence {

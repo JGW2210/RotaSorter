@@ -133,6 +133,20 @@ export default function RunDetail() {
           </div>
         </dl>
         {run.status_detail && <p>{run.status_detail}</p>}
+        {run.history_run_id && (
+          <p className="muted">
+            Planned against{" "}
+            <Link to={`/runs/${run.history_run_id}`}>
+              {(() => {
+                const basis = ordered.find((r) => r.id === run.history_run_id);
+                return basis
+                  ? `the run of ${formatDateTime(basis.requested_at)} for the week of ${formatDate(basis.week_start)}`
+                  : "an earlier run";
+              })()}
+            </Link>
+            , so publishing this week waits for that one unless Settings allow otherwise.
+          </p>
+        )}
         {run.worker_ref && (
           <p>
             <a href={run.worker_ref} target="_blank" rel="noreferrer">

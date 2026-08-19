@@ -506,6 +506,17 @@ SOLVER_SETTINGS = [
      "Seconds the CP-SAT solver may spend before returning its best answer.", 5),
     ("random_seed", 20260914, "Random seed",
      "Fixed so the same inputs give the same rota.", 6),
+    # Behaviour toggles rather than weights: 0 = off, 1 = on. Also inserted by
+    # migration 0006 for databases that never re-seed; the seed's truncate
+    # would otherwise wipe them here.
+    ("history_from_unpublished", 0, "Plan against unpublished weeks",
+     "When last week has no published rota, count its latest solved run "
+     "instead. Runs planned this way cannot be published until that week is.",
+     100),
+    ("allow_publish_out_of_order", 0, "Allow out-of-order publishing",
+     "Publish a week even though the rota it was planned against has not "
+     "been published. The runs it counted may no longer be what that week "
+     "gets.", 101),
 ]
 
 
