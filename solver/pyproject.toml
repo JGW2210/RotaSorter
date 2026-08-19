@@ -1,0 +1,22 @@
+[project]
+name = "rotasolver"
+version = "0.1.0"
+description = "CP-SAT bench rota solver for RotaSorter"
+requires-python = ">=3.10"
+dependencies = [
+    "ortools>=9.10",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+rotasolver = "rotasolver.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

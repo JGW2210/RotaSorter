@@ -1,0 +1,101 @@
+name: Deploy web to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", ".github/workflows/deploy-web.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        working-directory: web
+        run: npm ci
+
+      # Without this the build happily bakes in empty strings, the deploy
+      # succeeds, and the live site shows the setup screen with nothing in the
+      # log to explain it. Fail here instead, and say what to fix.
+      - name: Check the build has its Supabase variables
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          ok=1
+
+          if [ -z "${VITE_SUPABASE_URL}" ] || [ -z "${VITE_SUPABASE_ANON_KEY}" ]; then
+            ok=0
+            echo "::error::VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must both be set."
+            echo "::error::Add them under Settings -> Secrets and variables -> Actions,"
+            echo "::error::on the Variables tab, as *Repository* variables."
+            echo "::error::Not Secrets: the Pages build cannot read those."
+            echo "::error::Not Environment variables: this job declares no environment,"
+            echo "::error::so variables scoped to github-pages are invisible to it."
+          fi
+
+          if [ -n "${VITE_SUPABASE_URL}" ] && \
+             ! printf '%s' "${VITE_SUPABASE_URL}" | grep -Eq '^https://[a-z0-9-]+\.supabase\.(co|in)$'; then
+            ok=0
+            echo "::error::VITE_SUPABASE_URL should look like https://YOUR-PROJECT.supabase.co"
+            echo "::error::with no trailing slash and no /rest/v1 path."
+          fi
+
+          # The one mistake that would actually matter.
+          if [ -n "${VITE_SUPABASE_ANON_KEY}" ]; then
+            payload=$(printf '%s' "${VITE_SUPABASE_ANON_KEY}" | cut -d. -f2 | tr '_-' '/+')
+            pad=$(( (4 - ${#payload} % 4) % 4 ))
+            while [ "$pad" -gt 0 ]; do payload="${payload}="; pad=$((pad - 1)); done
+            if printf '%s' "$payload" | base64 -d 2>/dev/null | grep -q 'service_role'; then
+              ok=0
+              echo "::error::That is the service role key. It bypasses every row level"
+              echo "::error::security policy and anything built into the page is public."
+              echo "::error::Use the anon / publishable key, and rotate that one now."
+            fi
+          fi
+
+          [ "$ok" -eq 1 ] || exit 1
+          echo "Supabase variables present and plausible."
+
+      - name: Build
+        working-directory: web
+        env:
+          # Both are safe to expose: the anon key only grants what RLS allows,
+          # and RLS here requires an authenticated session. They are repository
+          # *variables*, not secrets, so this build can read them.
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
