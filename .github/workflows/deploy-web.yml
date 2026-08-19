@@ -58,16 +58,26 @@ jobs:
             echo "::error::with no trailing slash and no /rest/v1 path."
           fi
 
-          # The one mistake that would actually matter.
+          # The one mistake that would actually matter. Supabase has two key
+          # formats in circulation: legacy JWTs carrying a role claim, and the
+          # newer sb_publishable_ / sb_secret_ pair. Check for both, or new
+          # projects — which is all of them from now on — go unguarded.
           if [ -n "${VITE_SUPABASE_ANON_KEY}" ]; then
+            secret=0
+            case "${VITE_SUPABASE_ANON_KEY}" in
+              sb_secret_*) secret=1 ;;
+            esac
             payload=$(printf '%s' "${VITE_SUPABASE_ANON_KEY}" | cut -d. -f2 | tr '_-' '/+')
             pad=$(( (4 - ${#payload} % 4) % 4 ))
             while [ "$pad" -gt 0 ]; do payload="${payload}="; pad=$((pad - 1)); done
             if printf '%s' "$payload" | base64 -d 2>/dev/null | grep -q 'service_role'; then
+              secret=1
+            fi
+            if [ "$secret" -eq 1 ]; then
               ok=0
-              echo "::error::That is the service role key. It bypasses every row level"
-              echo "::error::security policy and anything built into the page is public."
-              echo "::error::Use the anon / publishable key, and rotate that one now."
+              echo "::error::That is the secret / service role key. It bypasses every row"
+              echo "::error::level security policy, and anything built into the page is"
+              echo "::error::public. Use the anon / publishable key, and rotate that one."
             fi
           fi
 
