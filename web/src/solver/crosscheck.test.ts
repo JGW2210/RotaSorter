@@ -22,7 +22,8 @@ const FIXTURES = join(HERE, "__fixtures__");
 interface Expected {
   status: string;
   objectiveValue: number | null;
-  assignments: { workDate: string; benchId: string; staffId: string }[];
+  assignmentCount: number;
+  pinnedCount: number;
   breaches: { ruleName: string; detail: string }[];
   infeasibleConflictKinds: string[];
   infeasibleBenchNames: string[];
@@ -66,7 +67,10 @@ describe.each(manifest)("case: %s", (name) => {
 
     it("places the same number of people", async () => {
       const result = await solveOnce(name, problem);
-      expect(result.assignments.length).toBe(expected.assignments.length);
+      expect(result.assignments.length).toBe(expected.assignmentCount);
+      expect(result.assignments.filter((a) => a.isPinned).length).toBe(
+        expected.pinnedCount,
+      );
     });
 
     it("breaches the same soft rules", async () => {

@@ -16,9 +16,17 @@ export const missingConfig: string[] = [
   !anonKey && "VITE_SUPABASE_ANON_KEY",
 ].filter(Boolean) as string[];
 
-/** Guard against the mistake that would matter: shipping the service key. */
+/** Guard against the mistake that would matter: shipping the secret key.
+ *
+ * Supabase has two key formats in circulation. Legacy projects issue JWTs whose
+ * payload carries a role claim; newer ones issue `sb_publishable_…` and
+ * `sb_secret_…`. Checking only the JWT would let a new-format secret key
+ * through, on exactly the projects created from now on.
+ */
 export const looksLikeServiceKey =
-  Boolean(anonKey) && /"role"\s*:\s*"service_role"/.test(decodeJwtPayload(anonKey!));
+  Boolean(anonKey) &&
+  (anonKey!.startsWith("sb_secret_") ||
+    /"role"\s*:\s*"service_role"/.test(decodeJwtPayload(anonKey!)));
 
 function decodeJwtPayload(token: string): string {
   try {

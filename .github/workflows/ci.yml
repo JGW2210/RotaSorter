@@ -47,16 +47,35 @@ jobs:
             git diff --stat -- supabase/seed
             exit 1
           fi
+      # Exported twice on purpose. CP-SAT runs several workers and races
+      # between them, so a fixture that records anything varying between
+      # equally optimal rotas drifts run to run — which shows up here as an
+      # inscrutable "not in sync" rather than as what it is.
+      - name: Fixture export is reproducible
+        working-directory: solver
+        run: |
+          set -euo pipefail
+          python3 -m rotasolver.export_fixture /tmp/fixtures-a >/dev/null
+          python3 -m rotasolver.export_fixture /tmp/fixtures-b >/dev/null
+          if ! diff -r /tmp/fixtures-a /tmp/fixtures-b; then
+            echo "::error::Two exports of the same input disagree, so the fixtures record"
+            echo "::error::something that varies between equally optimal solutions."
+            echo "::error::Record the optimum's value and counts, not a particular rota."
+            exit 1
+          fi
+          echo "Two independent exports agree."
+
       - name: Cross-check fixtures match the reference solver
         working-directory: solver
         run: |
           python3 -m rotasolver.export_fixture ../web/src/solver/__fixtures__
           cd ..
           if ! git diff --quiet -- web/src/solver/__fixtures__; then
-            echo "::error::The reference solver now answers differently. Either the model"
-            echo "::error::changed on purpose (regenerate and commit the fixtures), or"
-            echo "::error::something regressed."
-            git diff --stat -- web/src/solver/__fixtures__
+            echo "::error::The reference solver now answers differently. If you changed the"
+            echo "::error::model on purpose, regenerate and commit:"
+            echo "::error::  cd solver && python3 -m rotasolver.export_fixture ../web/src/solver/__fixtures__"
+            echo "::error::Otherwise something regressed."
+            git diff -- web/src/solver/__fixtures__
             exit 1
           fi
 

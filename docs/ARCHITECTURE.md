@@ -97,6 +97,20 @@ its place immediately: it caught the port dropping the objective contribution of
 pinned variables, which made a pinned week score 40 worse than the identical
 unpinned one.
 
+The fixtures record the optimum's **value** and the counts, never a particular
+rota. A week usually has many rotas of equal cost, and CP-SAT runs several
+workers that race, so which one comes back varies between runs. Storing one
+would make the fixture drift for no reason — it did, until the fixtures were
+narrowed to what is actually determined. Coverage, pins and trainee supervision
+are checked directly against the problem rather than against a stored answer,
+which is a better test anyway: it asserts the rota is correct, not that it is
+the same as last time. CI exports twice and diffs the two to catch any
+reintroduction of this.
+
+`--deterministic` drops CP-SAT to a single worker when an exact rota needs
+reproducing while debugging. It is around 16x slower, which is why it is not
+the default.
+
 ## The data model
 
 Three additions beyond the tables the design spec lists:
