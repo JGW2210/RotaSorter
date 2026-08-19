@@ -1,6 +1,6 @@
 {
  "expected": {
-  "assignments": [],
+  "assignmentCount": 0,
   "breaches": [],
   "infeasibleBenchNames": [
    "Blood Cultures"
@@ -9,6 +9,7 @@
    "rule"
   ],
   "objectiveValue": null,
+  "pinnedCount": 0,
   "status": "infeasible"
  },
  "name": "infeasible-hard-rule",

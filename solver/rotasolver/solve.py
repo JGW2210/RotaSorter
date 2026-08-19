@@ -533,7 +533,13 @@ class RotaModel:
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = float(self.p.setting("max_solve_seconds"))
         solver.parameters.random_seed = self.p.setting("random_seed")
-        solver.parameters.num_workers = 8
+        # Several workers is 16x faster here, and CP-SAT races between them, so
+        # among the many equally optimal rotas it returns whichever was found
+        # first. That is fine: the fixtures record the optimum's value and the
+        # counts, which are the same whichever optimum you land on, never the
+        # arbitrary choice itself. Drop to one worker to reproduce an exact
+        # rota while debugging — see --deterministic.
+        solver.parameters.num_workers = int(self.p.settings.get("cp_sat_workers", 8))
         status = solver.Solve(self.model)
         return solver, status
 

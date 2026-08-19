@@ -114,17 +114,14 @@ def solution_to_json(problem: Problem) -> dict[str, Any]:
     return {
         "status": solution.status,
         "objectiveValue": solution.objective_value,
-        "assignments": sorted(
-            [
-                {
-                    "workDate": a.work_date.isoformat(),
-                    "benchId": a.bench_id,
-                    "staffId": a.staff_id,
-                }
-                for a in solution.assignments
-            ],
-            key=lambda a: (a["workDate"], a["benchId"], a["staffId"]),
-        ),
+        # The count, not the list. A week usually has many rotas of equal cost
+        # and which one comes back is arbitrary, so pinning one would make this
+        # fixture drift for no reason. What must match is the optimum's value,
+        # asserted separately, and that both solvers place the same number of
+        # people. Coverage, pins and supervision are checked directly against
+        # the problem by the cross-check rather than against a stored answer.
+        "assignmentCount": len(solution.assignments),
+        "pinnedCount": sum(1 for a in solution.assignments if a.is_pinned),
         "breaches": sorted(
             [{"ruleName": b.rule_name, "detail": b.detail} for b in solution.breaches],
             key=lambda b: (b["ruleName"], b["detail"]),
@@ -195,9 +192,10 @@ def main(out_dir: str) -> None:
         path = out / f"{name}.json"
         path.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n")
         manifest.append(name)
-        print(f"  {name}: {payload['expected']['status']} "
-              f"objective={payload['expected']['objectiveValue']} "
-              f"assignments={len(payload['expected']['assignments'])}")
+        expected = payload["expected"]
+        print(f"  {name}: {expected['status']} "
+              f"objective={expected['objectiveValue']} "
+              f"assignments={expected['assignmentCount']}")
 
     (out / "manifest.json").write_text(json.dumps(sorted(manifest), indent=1) + "\n")
     print(f"wrote {len(manifest)} cases to {out}")

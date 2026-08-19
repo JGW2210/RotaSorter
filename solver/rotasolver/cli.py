@@ -54,10 +54,12 @@ def _print_rota(problem: Problem, solution: Solution) -> None:
             print(f"  [{breach.weight:>3}] {breach.rule_name}: {breach.detail}")
 
 
-def _self_check(show: bool) -> int:
+def _self_check(show: bool, deterministic: bool = False) -> int:
     from .fixtures import seeded_problem
 
     problem = seeded_problem()
+    if deterministic:
+        problem.settings["cp_sat_workers"] = 1
     print(f"{SOLVER_VERSION} — self check on the seeded week "
           f"({problem.week_start:%d %b %Y})")
     print(f"  {len(problem.staff)} staff, {len(problem.benches)} benches, "
@@ -73,13 +75,16 @@ def _self_check(show: bool) -> int:
     return 0 if solution.status in ("solved", "solved_with_breaches") else 1
 
 
-def _check_week(week_start: date, show: bool) -> int:
+def _check_week(week_start: date, show: bool, deterministic: bool = False) -> int:
     """Load a real week and report what the reference solver makes of it."""
     from .loader import load_problem
     from .supabase import Supabase
 
     with Supabase() as db:
         problem = load_problem(db, week_start)
+
+    if deterministic:
+        problem.settings["cp_sat_workers"] = 1
 
     print(f"{SOLVER_VERSION} — week beginning {week_start:%d %b %Y}")
     print(f"  {len(problem.staff)} staff, {len(problem.benches)} benches, "
@@ -105,11 +110,14 @@ def main(argv: list[str] | None = None) -> int:
                        help="read a real week (YYYY-MM-DD) and solve it, read-only")
     parser.add_argument("--print", dest="show", action="store_true",
                         help="print the resulting rota")
+    parser.add_argument("--deterministic", action="store_true",
+                        help="solve on one worker, so the same input gives the "
+                             "same rota every time. Around 16x slower.")
     args = parser.parse_args(argv)
 
     if args.self_check:
-        return _self_check(args.show)
-    return _check_week(date.fromisoformat(args.week), args.show)
+        return _self_check(args.show, args.deterministic)
+    return _check_week(date.fromisoformat(args.week), args.show, args.deterministic)
 
 
 if __name__ == "__main__":
