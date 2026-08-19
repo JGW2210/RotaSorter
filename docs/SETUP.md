@@ -107,12 +107,20 @@ Get both values from **Project Settings → API**:
 - **Project URL** → `VITE_SUPABASE_URL`
 - **anon / publishable** key → `VITE_SUPABASE_ANON_KEY`
 
-Create `web/.env.local` (git-ignored):
+Create `web/.env.local`:
 
 ```bash
 VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
+VITE_SUPABASE_ANON_KEY=sb_publishable_...
 ```
+
+This file is git-ignored and should stay that way. Creating it through the
+GitHub web interface rather than on disk bypasses `.gitignore` and commits it,
+which is worth avoiding even though the publishable key is safe to expose: a
+checked-in copy quietly overrides nothing useful, goes stale the moment you
+rotate a key, and leaves an obvious place for the next person to put something
+that genuinely is secret. The deployed build reads the repository variables
+from step 6, never this file.
 
 ```bash
 cd web
