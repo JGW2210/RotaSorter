@@ -15,5 +15,11 @@
 -- them.
 -- =====================================================================
 
+-- Wrapped in a transaction: if any statement fails, nothing is left
+-- behind and the file can be corrected and run again.
+begin;
+
 drop function if exists queue_rota_run(date);
 drop function if exists claim_next_run();
+
+commit;

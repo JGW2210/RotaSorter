@@ -151,7 +151,7 @@ with data(staff_code, starts_on, ends_on, kind, notes) as (
     ('AP-0326', '2026-08-24', '2026-08-28', 'annual_leave', null)
 )
 insert into absence (staff_id, starts_on, ends_on, kind, notes)
-select s.id, d.starts_on, d.ends_on, d.kind::absence_kind, d.notes
+select s.id, d.starts_on::date, d.ends_on::date, d.kind::absence_kind, d.notes
 from data d
 join staff s on s.staff_code = d.staff_code;
 

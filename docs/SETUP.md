@@ -49,11 +49,18 @@ supabase/migrations/0003_functions.sql     views, triggers and the RPCs
 supabase/migrations/0004_client_solver.sql drops the two worker RPCs
 ```
 
+Each file is wrapped in a transaction, so a failure leaves nothing behind and
+you can simply run it again once the problem is fixed.
+
 With the Supabase CLI linked to the project, all four at once:
 
 ```bash
 supabase db push
 ```
+
+**Starting over.** `supabase/migrations/0000_reset.sql` drops everything these
+migrations create, so you can rebuild from nothing. It leaves `auth.users`
+alone, so your login survives. Run it only when you mean it.
 
 ## 3. Load the synthetic staff
 
@@ -152,6 +159,25 @@ rather than Variables. The Pages build cannot read secrets.
    again afterwards.
 
 ---
+
+## Checking the SQL without a Supabase project
+
+`supabase/test/run.sh` runs every migration and seed against a throwaway
+PostgreSQL database and then asserts the result: row counts, RLS enabled on
+every table, `anon` holding no privileges, the check constraints actually
+rejecting bad data, and each trigger and RPC doing its job. It finishes by
+running the reset and rebuilding from scratch to prove that works too.
+
+```bash
+PGHOST=localhost PGPORT=5432 PGUSER=postgres supabase/test/run.sh
+```
+
+`supabase/test/00_supabase_shim.sql` provides the little that Supabase gives you
+and a bare cluster does not — the `anon`, `authenticated` and `service_role`
+roles, `auth.users`, `auth.uid()` and the realtime publication. It is only ever
+used for this; nothing in it runs against a real project.
+
+CI runs this on every push against a `postgres:16` service container.
 
 ## The reference solver
 

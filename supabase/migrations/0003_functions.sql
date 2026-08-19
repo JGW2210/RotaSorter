@@ -3,6 +3,10 @@
 -- Triggers, derived views and the RPCs the UI and worker call.
 -- =====================================================================
 
+-- Wrapped in a transaction: if any statement fails, nothing is left
+-- behind and the file can be corrected and run again.
+begin;
+
 -- ---------------------------------------------------------------------
 -- Triggers
 -- ---------------------------------------------------------------------
@@ -343,3 +347,5 @@ begin
   end;
 end
 $$;
+
+commit;

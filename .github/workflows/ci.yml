@@ -60,6 +60,34 @@ jobs:
             exit 1
           fi
 
+  database:
+    name: Migrations and seeds run
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rota
+          POSTGRES_PASSWORD: rota
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rota"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: rota
+      PGPASSWORD: rota
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: Run every migration and seed, then check the result
+        run: supabase/test/run.sh
+
   web:
     name: Web
     runs-on: ubuntu-latest

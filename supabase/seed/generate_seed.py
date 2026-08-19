@@ -651,7 +651,7 @@ def emit_staff() -> str:
     out += ",\n".join(rows) + "\n)\n"
     out += textwrap.dedent("""\
         insert into absence (staff_id, starts_on, ends_on, kind, notes)
-        select s.id, d.starts_on, d.ends_on, d.kind::absence_kind, d.notes
+        select s.id, d.starts_on::date, d.ends_on::date, d.kind::absence_kind, d.notes
         from data d
         join staff s on s.staff_code = d.staff_code;
 

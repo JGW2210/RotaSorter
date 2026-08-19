@@ -2,11 +2,15 @@
 -- RotaSorter — 0001_schema.sql
 -- Core schema for the bench rota prototype.
 --
--- Run order:  0001_schema.sql -> 0002_rls.sql -> 0003_functions.sql
--- then the files in supabase/seed/ in numeric order.
+-- Run order:  0001 -> 0002 -> 0003 -> 0004, then the files in
+-- supabase/seed/ in numeric order. 0000_reset.sql is an optional teardown.
 --
 -- Synthetic data only. No real employee records at any point.
 -- =====================================================================
+
+-- Wrapped in a transaction: if any statement fails, nothing is left
+-- behind and the file can be corrected and run again.
+begin;
 
 create extension if not exists pgcrypto;
 
@@ -134,10 +138,10 @@ create table bench_shift_requirement (
   max_staff       int check (max_staff is null or max_staff >= min_staff),
   required_level  competency_level,   -- null inherits bench.required_level
   primary key (bench_id, shift_id, label),
-  check (
-    array_length(weekdays, 1) is null
-    or (select bool_and(d between 1 and 7) from unnest(weekdays) as d)
-  )
+  -- Array containment rather than a scan over unnest(): a CHECK constraint
+  -- cannot contain a subquery. An empty array is contained in anything, which
+  -- is the right answer for a bench that runs on no days.
+  check (weekdays <@ array[1, 2, 3, 4, 5, 6, 7]::smallint[])
 );
 
 -- ---------------------------------------------------------------------
@@ -323,3 +327,5 @@ create table solver_setting (
   description  text,
   sort_order   int not null default 0
 );
+
+commit;

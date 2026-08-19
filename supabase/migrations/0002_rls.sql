@@ -12,6 +12,10 @@
 -- read-only viewers later without a migration; see docs/SETUP.md.
 -- =====================================================================
 
+-- Wrapped in a transaction: if any statement fails, nothing is left
+-- behind and the file can be corrected and run again.
+begin;
+
 -- ---------------------------------------------------------------------
 -- Helper: current user's role, used by the tightened policies in SETUP.md
 -- ---------------------------------------------------------------------
@@ -102,3 +106,5 @@ revoke all on all sequences in schema public from anon;
 
 alter default privileges in schema public revoke all on tables from anon;
 alter default privileges in schema public revoke all on sequences from anon;
+
+commit;
