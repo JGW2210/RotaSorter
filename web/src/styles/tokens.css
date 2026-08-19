@@ -1,0 +1,177 @@
+/* Design tokens.
+ *
+ * Instrument software, not a consumer app. A cool low-chroma slate carries the
+ * whole interface and colour is reserved almost entirely for meaning:
+ *
+ *   --signal-alert     under-minimum coverage, and nothing else, anywhere
+ *   --signal-caution   soft breach, competency expiring inside 60 days
+ *   --signal-ok        coverage met, deliberately quiet
+ *   --override         a human put this here, rather than the solver
+ *
+ * The last one is the idea worth protecting: you can tell solver output from
+ * human intervention without reading anything.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces */
+  --surface: #eef1f4;
+  --surface-raised: #ffffff;
+  --surface-sunken: #e2e7ec;
+  --surface-inset: #f7f9fa;
+  --rail: #1b242c;
+  --rail-ink: #c8d2db;
+  --rail-ink-strong: #ffffff;
+  --rail-active: #2b3a47;
+
+  /* Lines */
+  --border: #ccd5dd;
+  --border-strong: #adbac5;
+  --grid-line: #dbe2e8;
+
+  /* Text */
+  --ink: #16202a;
+  --ink-muted: #5a6b7a;
+  --ink-faint: #8494a1;
+  --ink-inverse: #ffffff;
+
+  /* Signals */
+  --signal-alert: #b8321c;
+  --signal-alert-soft: #fbe6e1;
+  --signal-alert-line: #e79b8a;
+
+  --signal-caution: #96620a;
+  --signal-caution-soft: #fbf0dd;
+  --signal-caution-line: #dcb572;
+
+  --signal-ok: #46705f;
+  --signal-ok-soft: #e6efea;
+  --signal-ok-line: #a9c5b8;
+
+  --override: #5b46a8;
+  --override-soft: #ece8f8;
+  --override-line: #b0a2dd;
+
+  --accent: #245c8a;
+  --accent-soft: #e2ecf4;
+
+  /* Type */
+  --font-display: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.75rem;
+  --text-base: 0.8125rem;
+  --text-md: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
+
+  /* Density: compact by default, comfortable is opt-in from Settings */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 10px;
+  --space-5: 14px;
+  --space-6: 20px;
+  --space-7: 28px;
+  --row-height: 26px;
+  --cell-pad: 5px;
+
+  --radius: 3px;
+  --radius-lg: 5px;
+
+  --rail-width: 168px;
+  --header-height: 46px;
+
+  --shadow-panel: 0 1px 2px rgb(22 32 42 / 0.08), 0 8px 24px rgb(22 32 42 / 0.08);
+  --focus-ring: 0 0 0 2px var(--surface-raised), 0 0 0 4px var(--accent);
+}
+
+:root[data-density="comfortable"] {
+  --text-base: 0.875rem;
+  --text-md: 0.9375rem;
+  --space-3: 8px;
+  --space-4: 14px;
+  --space-5: 18px;
+  --space-6: 26px;
+  --row-height: 34px;
+  --cell-pad: 9px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #10171d;
+    --surface-raised: #182129;
+    --surface-sunken: #0b1116;
+    --surface-inset: #1d2831;
+    --rail: #0b1116;
+    --rail-ink: #8fa1b0;
+    --rail-ink-strong: #eef3f7;
+    --rail-active: #1d2831;
+
+    --border: #2a3742;
+    --border-strong: #3d4c59;
+    --grid-line: #222e38;
+
+    --ink: #dfe7ee;
+    --ink-muted: #93a3b1;
+    --ink-faint: #6b7c8a;
+    --ink-inverse: #0b1116;
+
+    --signal-alert: #f08c74;
+    --signal-alert-soft: #341914;
+    --signal-alert-line: #7d3527;
+
+    --signal-caution: #e0ad5c;
+    --signal-caution-soft: #2e2413;
+    --signal-caution-line: #6f5427;
+
+    --signal-ok: #86b6a1;
+    --signal-ok-soft: #16241e;
+    --signal-ok-line: #3a5b4c;
+
+    --override: #ab98ea;
+    --override-soft: #201c33;
+    --override-line: #4c4177;
+
+    --accent: #6fb0e0;
+    --accent-soft: #14232e;
+
+    --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.45);
+  }
+}
+
+:root[data-theme="dark"] {
+  --surface: #10171d;
+  --surface-raised: #182129;
+  --surface-sunken: #0b1116;
+  --surface-inset: #1d2831;
+  --rail: #0b1116;
+  --rail-ink: #8fa1b0;
+  --rail-ink-strong: #eef3f7;
+  --rail-active: #1d2831;
+  --border: #2a3742;
+  --border-strong: #3d4c59;
+  --grid-line: #222e38;
+  --ink: #dfe7ee;
+  --ink-muted: #93a3b1;
+  --ink-faint: #6b7c8a;
+  --ink-inverse: #0b1116;
+  --signal-alert: #f08c74;
+  --signal-alert-soft: #341914;
+  --signal-alert-line: #7d3527;
+  --signal-caution: #e0ad5c;
+  --signal-caution-soft: #2e2413;
+  --signal-caution-line: #6f5427;
+  --signal-ok: #86b6a1;
+  --signal-ok-soft: #16241e;
+  --signal-ok-line: #3a5b4c;
+  --override: #ab98ea;
+  --override-soft: #201c33;
+  --override-line: #4c4177;
+  --accent: #6fb0e0;
+  --accent-soft: #14232e;
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.45);
+}
