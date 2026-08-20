@@ -336,6 +336,9 @@ a.btn:hover { text-decoration: none; }
   color: var(--ink-faint);
 }
 
+/* A lone select in a full-width field stretching wall to wall looks broken. */
+.field > select { max-width: 320px; }
+
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -559,7 +562,42 @@ textarea {
 
 .docs { font-size: var(--text-xs); color: var(--ink-muted); }
 
-.rule-sentence { font-weight: 500; }
+/* The sentence is the row's primary read, not a call to action: it reads in
+   ink and only takes the link colour under the pointer. A table of long blue
+   sentences read as a link farm. */
+.rule-sentence { font-weight: 500; color: var(--ink); }
+.rule-sentence:hover { color: var(--accent); }
+
+/* Row actions sit flush right so eight rows of Pause/Duplicate stop reading
+   as a ragged column of grey words. */
+.table td.table__actions,
+.table th.table__actions { text-align: right; white-space: nowrap; }
+
+/* A day heading inside a grouped table, "Monday 14 Sep" read once. */
+.table .table__daybreak th {
+  background: var(--surface-inset);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  text-align: left;
+  padding-top: var(--space-4);
+}
+
+.table__daybreak-count {
+  float: right;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-faint);
+}
+
+.count-with-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
 
 .pattern {
   display: inline-flex;
@@ -631,6 +669,17 @@ button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1p
 
 .doclist__num { color: var(--ink-muted); }
 .doclist__title { font-size: var(--text-sm); }
+
+.doclist-fold { margin-top: var(--space-4); }
+.doclist-fold summary {
+  cursor: pointer;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+.doclist-fold summary:hover { color: var(--ink); }
+.doclist-fold[open] summary { margin-bottom: var(--space-3); }
+
+.recent__date { color: var(--ink-muted); }
 
 .detail__head {
   display: flex;
@@ -816,7 +865,12 @@ button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1p
   border-radius: 1px;
 }
 
-.coverage__seg--filled { background: var(--signal-ok); }
+/* Coverage met is meant to be quiet — full-strength green on every covered
+   cell made the board glow, worst on the dark theme. The alert stays loud:
+   a gap is the one thing this rail exists to shout about. */
+.coverage__seg--filled {
+  background: color-mix(in srgb, var(--signal-ok) 55%, var(--surface-raised));
+}
 .coverage--gap .coverage__seg--filled { background: var(--signal-alert); }
 .coverage--gap .coverage__seg { background: var(--signal-alert-line); }
 
@@ -830,7 +884,9 @@ button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1p
 }
 
 .coverage--gap .coverage__label { color: var(--signal-alert); font-weight: 600; }
-.coverage--idle .coverage__label { color: var(--ink-faint); font-style: italic; }
+.coverage--idle .coverage__label {
+  color: color-mix(in srgb, var(--ink-faint) 55%, transparent);
+}
 .coverage__flag { font-size: 8px; }
 
 .chip {
@@ -1019,9 +1075,9 @@ button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1p
   top: 0;
   z-index: 2;
   background: var(--surface-inset);
-  /* Tall enough for "Trichomonas, Grams and Broths" to read in full: a bench
-     name that ends in an ellipsis is not a column heading. */
-  height: 210px;
+  /* Tall enough for "Screening, Faeces and Tips Reading" to read in full: a
+     bench name that ends in an ellipsis is not a column heading. */
+  height: 236px;
   width: 26px;
   padding: var(--space-2) 0;
   vertical-align: bottom;
@@ -1034,7 +1090,7 @@ button.pattern__off:hover { outline: 1px solid var(--accent); outline-offset: 1p
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   white-space: nowrap;
-  max-height: 182px;
+  max-height: 208px;
   overflow: hidden;
   text-overflow: ellipsis;
   margin: 0 auto;

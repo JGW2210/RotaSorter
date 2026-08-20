@@ -765,6 +765,10 @@ function DryRunReport({ dryRun }: { dryRun: DryRun }) {
   const bothSolved =
     ["solved", "solved_with_breaches"].includes(baseline.status) &&
     ["solved", "solved_with_breaches"].includes(withDraft.status);
+  // Many optimal rotas score the same; a rule that costs nothing still moves
+  // tie-broken placements around, and reporting that count as impact lies.
+  const sameScore =
+    bothSolved && baseline.objectiveValue === withDraft.objectiveValue;
 
   return (
     <div className="dryrun">
@@ -785,7 +789,10 @@ function DryRunReport({ dryRun }: { dryRun: DryRun }) {
         <p className="muted">
           {moved === 0
             ? "The rota does not change."
-            : `${moved} ${moved === 1 ? "placement changes" : "placements change"}.`}
+            : sameScore
+              ? "This rule costs the rota nothing this week: where the two " +
+                "rotas differ, the solver is choosing between equally good options."
+              : `${moved} ${moved === 1 ? "placement changes" : "placements change"} to make room for it.`}
         </p>
       )}
       {draftBreaches.length > 0 && (

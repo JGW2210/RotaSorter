@@ -16,7 +16,7 @@ import {
 } from "../lib/queries";
 import { supabase } from "../lib/supabase";
 import type { AbsenceKind } from "../lib/types";
-import { WEEKDAY_SHORT, formatDate } from "../lib/week";
+import { WEEKDAY_SHORT, dayShort, formatDate, formatDateShort } from "../lib/week";
 
 const BLANK_ABSENCE = {
   starts_on: "",
@@ -274,39 +274,60 @@ export default function StaffDetail() {
       </Panel>
 
       <Panel title="Document sign-off">
-        {(staffDocuments.data ?? []).length === 0 ? (
-          <p className="muted">No document records.</p>
-        ) : (
-          <ul className="doclist">
-            {(staffDocuments.data ?? [])
-              .slice()
-              .sort((a, b) =>
-                (docById.get(a.document_id)?.doc_number ?? "").localeCompare(
-                  docById.get(b.document_id)?.doc_number ?? "",
-                ),
-              )
-              .map((row) => {
-                const doc = docById.get(row.document_id);
-                return (
-                  <li key={row.id}>
-                    <span className="mono doclist__num">{doc?.doc_number ?? "?"}</span>
-                    <span className="doclist__title">{doc?.title ?? ""}</span>
-                    <Tag
-                      tone={
-                        row.status === "signed_off"
-                          ? "ok"
-                          : row.status === "in_training"
-                            ? "caution"
-                            : "neutral"
-                      }
-                    >
-                      {row.status.replace(/_/g, " ")}
-                    </Tag>
-                  </li>
-                );
-              })}
-          </ul>
-        )}
+        {(() => {
+          const sorted = (staffDocuments.data ?? [])
+            .slice()
+            .sort((a, b) =>
+              (docById.get(a.document_id)?.doc_number ?? "").localeCompare(
+                docById.get(b.document_id)?.doc_number ?? "",
+              ),
+            );
+          if (sorted.length === 0) return <p className="muted">No document records.</p>;
+
+          const docRow = (row: (typeof sorted)[number]) => {
+            const doc = docById.get(row.document_id);
+            return (
+              <li key={row.id}>
+                <span className="mono doclist__num">{doc?.doc_number ?? "?"}</span>
+                <span className="doclist__title">{doc?.title ?? ""}</span>
+                <Tag
+                  tone={
+                    row.status === "signed_off"
+                      ? "ok"
+                      : row.status === "in_training"
+                        ? "caution"
+                        : "neutral"
+                  }
+                >
+                  {row.status.replace(/_/g, " ")}
+                </Tag>
+              </li>
+            );
+          };
+
+          /* The work in progress stays in view; the signed-off bulk folds
+             away behind its count. A wall of green "signed off" rows tells
+             you nothing forty-five times. */
+          const pending = sorted.filter((r) => r.status !== "signed_off");
+          const signed = sorted.filter((r) => r.status === "signed_off");
+          return (
+            <>
+              {pending.length === 0 ? (
+                <p className="muted">Everything recorded here is signed off.</p>
+              ) : (
+                <ul className="doclist">{pending.map(docRow)}</ul>
+              )}
+              {signed.length > 0 && (
+                <details className="doclist-fold">
+                  <summary>
+                    {signed.length} signed-off {signed.length === 1 ? "document" : "documents"}
+                  </summary>
+                  <ul className="doclist">{signed.map(docRow)}</ul>
+                </details>
+              )}
+            </>
+          );
+        })()}
       </Panel>
 
       <Panel title="Last four weeks">
@@ -316,7 +337,9 @@ export default function StaffDetail() {
           <ul className="stack">
             {(recent.data ?? []).map((a) => (
               <li key={a.id}>
-                <span className="mono">{a.work_date}</span>{" "}
+                <span className="mono recent__date">
+                  {dayShort(a.work_date)} {formatDateShort(a.work_date)}
+                </span>{" "}
                 {benchById.get(a.bench_id)?.name ?? "Unknown bench"}
                 {a.is_pinned && <Tag tone="override" glyph="📌">pinned</Tag>}
               </li>

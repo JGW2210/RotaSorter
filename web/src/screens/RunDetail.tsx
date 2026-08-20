@@ -1,11 +1,11 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ErrorNote, Loading, Panel, Tag } from "../components/Bits";
 import { InfeasiblePanel } from "../components/InfeasiblePanel";
 import { RUN_STATUS_LABELS } from "../lib/format";
 import { useAllRuns, useAssignments, useBenches, useBreaches, useStaff } from "../lib/queries";
 import { statusTone } from "./Runs";
-import { dayShort, formatDate, formatDateTime, formatDuration } from "../lib/week";
+import { dayName, formatDate, formatDateShort, formatDateTime, formatDuration } from "../lib/week";
 
 interface SnapshotRule {
   id: string;
@@ -68,6 +68,25 @@ export default function RunDetail() {
     () => new Map((benches.data ?? []).map((b) => [b.id, b])),
     [benches.data],
   );
+
+  const byDay = useMemo(() => {
+    const rows = (assignments.data ?? [])
+      .slice()
+      .sort(
+        (a, b) =>
+          a.work_date.localeCompare(b.work_date) ||
+          (benchById.get(a.bench_id)?.name ?? "").localeCompare(
+            benchById.get(b.bench_id)?.name ?? "",
+          ),
+      );
+    const grouped = new Map<string, typeof rows>();
+    for (const a of rows) {
+      const list = grouped.get(a.work_date);
+      if (list) list.push(a);
+      else grouped.set(a.work_date, [a]);
+    }
+    return grouped;
+  }, [assignments.data, benchById]);
 
   if (runs.error) return <ErrorNote error={runs.error} />;
   if (runs.isLoading) return <Loading what="this run" />;
@@ -240,43 +259,44 @@ export default function RunDetail() {
 
       <Panel title="Assignments">
         <div className="table-wrap">
+          {/* Grouped by day rather than a flat 90-row list: the date read once
+              per group, and provenance marked only where a human pinned it. */}
           <table className="table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Day</th>
                 <th>Bench</th>
                 <th>Staff</th>
-                <th>Source</th>
+                <th className="table__actions">
+                  <span className="visually-hidden">Provenance</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {(assignments.data ?? [])
-                .slice()
-                .sort(
-                  (a, b) =>
-                    a.work_date.localeCompare(b.work_date) ||
-                    (benchById.get(a.bench_id)?.name ?? "").localeCompare(
-                      benchById.get(b.bench_id)?.name ?? "",
-                    ),
-                )
-                .map((a) => (
-                  <tr key={a.id}>
-                    <td className="mono">{a.work_date}</td>
-                    <td>{dayShort(a.work_date)}</td>
-                    <td>{benchById.get(a.bench_id)?.name ?? "—"}</td>
-                    <td>{staffById.get(a.staff_id)?.full_name ?? "—"}</td>
-                    <td>
-                      {a.is_pinned ? (
-                        <Tag tone="override" glyph="📌">
-                          pinned
-                        </Tag>
-                      ) : (
-                        a.source
-                      )}
-                    </td>
+              {[...byDay.entries()].map(([date, list]) => (
+                <Fragment key={date}>
+                  <tr className="table__daybreak">
+                    <th colSpan={3} scope="rowgroup">
+                      {dayName(date)} {formatDateShort(date)}
+                      <span className="table__daybreak-count">
+                        {list.length} {list.length === 1 ? "person" : "people"}
+                      </span>
+                    </th>
                   </tr>
-                ))}
+                  {list.map((a) => (
+                    <tr key={a.id}>
+                      <td>{benchById.get(a.bench_id)?.name ?? "—"}</td>
+                      <td>{staffById.get(a.staff_id)?.full_name ?? "—"}</td>
+                      <td className="table__actions">
+                        {a.is_pinned && (
+                          <Tag tone="override" glyph="📌">
+                            pinned
+                          </Tag>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
             </tbody>
           </table>
         </div>

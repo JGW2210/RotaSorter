@@ -151,17 +151,19 @@ export default function StaffList() {
                     <PatternStrip weekdays={patterns.get(person.id) ?? new Set()} />
                   </td>
                   <td>
-                    {summary?.competency_count ?? 0}
-                    {summary?.expiring_soon_count ? (
-                      <Tag tone="caution" glyph="◐">
-                        {summary.expiring_soon_count} expiring
-                      </Tag>
-                    ) : null}
-                    {summary?.expired_count ? (
-                      <Tag tone="alert" glyph="✕">
-                        {summary.expired_count} expired
-                      </Tag>
-                    ) : null}
+                    <span className="count-with-tags">
+                      {summary?.competency_count ?? 0}
+                      {summary?.expiring_soon_count ? (
+                        <Tag tone="caution" glyph="◐">
+                          {summary.expiring_soon_count} expiring
+                        </Tag>
+                      ) : null}
+                      {summary?.expired_count ? (
+                        <Tag tone="alert" glyph="✕">
+                          {summary.expired_count} expired
+                        </Tag>
+                      ) : null}
+                    </span>
                   </td>
                   <td className="mono">
                     {away.length ? formatDate(away[0].starts_on) : "—"}

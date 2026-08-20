@@ -228,7 +228,7 @@ export default function Rules() {
                   )}
                 </td>
                 <td className="mono">{breachCounts.get(rule.id) ?? 0}</td>
-                <td>
+                <td className="table__actions">
                   <button type="button" className="btn btn--quiet" onClick={() => void toggleStatus(rule)}>
                     {rule.status === "active" ? "Pause" : "Activate"}
                   </button>

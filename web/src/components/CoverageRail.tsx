@@ -6,9 +6,18 @@ import { isGap } from "../lib/coverage";
  * read anything. This is the only place the alert colour is allowed. */
 export function CoverageRail({ coverage }: { coverage: Coverage }) {
   if (!coverage.running) {
+    /* Visually near-silent: a board is mostly idle cells, and dozens of
+       "Not run" labels shout louder than the rota itself. The meaning stays
+       for pointers and screen readers. */
     return (
       <div className="coverage coverage--idle">
-        <span className="coverage__label">Not run</span>
+        <span
+          className="coverage__label"
+          title="This bench does not run today"
+          aria-label="Not run"
+        >
+          —
+        </span>
       </div>
     );
   }
